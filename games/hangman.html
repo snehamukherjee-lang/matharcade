@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Number Hangman — MathArcade</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .hangman-stage {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      gap: 36px;
+      flex-wrap: wrap;
+      padding: 10px 0;
+    }
+    .hangman-svg-wrap {
+      padding: 16px;
+      border: 2px solid rgba(255,230,0,0.3);
+      background: rgba(0,0,0,0.5);
+      border-radius: 2px;
+      flex-shrink: 0;
+    }
+    /* All SVG strokes neon yellow, parts hidden by default */
+    .hangman-svg line,
+    .hangman-svg circle,
+    .hangman-svg path,
+    .hangman-svg ellipse {
+      stroke: var(--neon-yellow);
+      stroke-width: 3;
+      stroke-linecap: round;
+      fill: none;
+      transition: opacity 0.4s ease;
+    }
+    .hangman-part { opacity: 0; transition: opacity 0.4s ease; }
+    .hangman-part.visible { opacity: 1; }
+    /* Dead X eyes */
+    .hangman-dead-eye { opacity: 0; fill: var(--neon-pink); stroke: var(--neon-pink); transition: opacity 0.4s; }
+    .hangman-part.dead .hangman-dead-eye { opacity: 1; }
+
+    .hangman-right {
+      max-width: 400px;
+      flex: 1;
+      min-width: 260px;
+    }
+    .problem-display {
+      font-family: 'Varela Round', monospace;
+      font-size: clamp(26px, 5vw, 50px);
+      font-weight: 900;
+      color: var(--neon-yellow);
+      text-shadow: 0 0 20px var(--neon-yellow);
+      text-align: center;
+      padding: 18px 20px;
+      border: 2px solid rgba(255,230,0,0.4);
+      background: rgba(255,230,0,0.04);
+      margin-bottom: 14px;
+    }
+
+    /* Question progress dots (5 questions) */
+    .q-progress {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 14px;
+    }
+    .qp-dot {
+      width: 16px; height: 16px;
+      border: 2px solid var(--neon-yellow);
+      transition: all 0.3s;
+    }
+    .qp-dot.current  { background: var(--neon-yellow); box-shadow: 0 0 8px var(--neon-yellow); animation: blink 0.7s step-end infinite; }
+    .qp-dot.correct  { background: var(--neon-green);  border-color: var(--neon-green); }
+    .qp-dot.wrong    { background: var(--neon-pink);   border-color: var(--neon-pink); }
+    .qp-dot.upcoming { opacity: 0.3; }
+
+    .answer-input-row {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      justify-content: center;
+    }
+    .big-num-input {
+      font-family: 'Varela Round', monospace;
+      font-size: 28px;
+      font-weight: 700;
+      background: transparent;
+      border: none;
+      border-bottom: 4px solid var(--neon-yellow);
+      color: var(--neon-yellow);
+      text-align: center;
+      outline: none;
+      width: 180px;
+      padding: 6px;
+    }
+
+    /* Feedback flash */
+    .feedback-flash {
+      text-align: center;
+      font-family: 'Press Start 2P', monospace;
+      font-size: 11px;
+      min-height: 24px;
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+
+    #problem-label { font-size: 8px; color: var(--text-dim); letter-spacing: 3px; margin-bottom: 8px; }
+  </style>
+</head>
+<body>
+<div class="crt-corner tl"></div><div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div><div class="crt-corner br"></div>
+
+<nav class="navbar">
+  <div class="navbar-brand"><span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span></div>
+  <ul class="navbar-nav">
+    <li><a href="../index.html">← HOME</a></li>
+    <li><span class="neon-yellow" style="font-size:9px;">🪄 NUMBER HANGMAN</span></li>
+    <li id="nav-user"></li>
+  </ul>
+</nav>
+
+<div class="game-hud" id="hud" style="display:none;">
+  <div class="hud-item"><div class="hud-label">SCORE</div><div class="hud-value neon-green" id="hud-score">0</div></div>
+  <div class="hud-item"><div class="hud-label">QUESTION</div><div class="hud-value neon-yellow" id="hud-round">1/5</div></div>
+  <div class="hud-item"><div class="hud-label">CORRECT</div><div class="hud-value neon-cyan" id="hud-correct">0</div></div>
+  <div class="hud-item"><div class="hud-label">TIME</div><div class="hud-value neon-pink" id="hud-time">30s</div></div>
+</div>
+
+<!-- ═══════════ SETTINGS ═══════════ -->
+<div id="screen-settings" style="max-width:640px;margin:40px auto;padding:20px;">
+  <div class="pixel-box yellow-box" style="padding:32px;">
+    <h1 class="neon-yellow text-center" style="font-size:16px;margin-bottom:8px;">🪄 NUMBER HANGMAN</h1>
+    <p class="vt323 text-center" style="font-size:22px;color:var(--text-dim);margin-bottom:24px;">
+      5 arithmetic problems. Every wrong answer draws the hangman. Solve all 5 to save him!
+    </p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>OPERATION</label>
+        <select class="pixel-input" id="op-select" style="border-color:var(--neon-yellow);color:var(--neon-yellow);">
+          <option value="add">➕ ADDITION</option>
+          <option value="sub">➖ SUBTRACTION</option>
+          <option value="addsub">➕➖ ADD & SUB</option>
+          <option value="mul">✖️  MULTIPLICATION</option>
+          <option value="div">➗ DIVISION</option>
+          <option value="mixed" selected>🔀 MIXED</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>NUMBER OF DIGITS</label>
+        <select class="pixel-input" id="diff-select" style="border-color:var(--neon-yellow);color:var(--neon-yellow);">
+          <option value="2-3">2-3 DIGITS</option>
+          <option value="3-4" selected>3-4 DIGITS</option>
+          <option value="4-5">4-5 DIGITS</option>
+          <option value="5-6">5-6 DIGITS</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>COMPLEXITY</label>
+        <select class="pixel-input" id="complex-select" style="border-color:var(--neon-yellow);color:var(--neon-yellow);">
+          <option value="very_easy">VERY EASY (2 Nums)</option>
+          <option value="easy">EASY (3 Nums)</option>
+          <option value="medium" selected>MEDIUM (4 Nums)</option>
+          <option value="hard">HARD (5 Nums, BODMAS)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>TIME PER QUESTION</label>
+        <select class="pixel-input" id="time-select" style="border-color:var(--neon-yellow);color:var(--neon-yellow);">
+          <option value="3">3 SECONDS</option>
+          <option value="5" selected>5 SECONDS</option>
+          <option value="10">10 SECONDS</option>
+          <option value="15">15 SECONDS</option>
+          <option value="20">20 SECONDS</option>
+          <option value="30">30 SECONDS</option>
+          <option value="45">45 SECONDS</option>
+        </select>
+      </div>
+      <div class="form-group" style="display:flex;align-items:flex-end;">
+        <div class="pixel-box" style="padding:12px;border-color:rgba(255,230,0,0.3);width:100%;">
+          <div class="vt323" style="font-size:19px;color:var(--text-dim);line-height:1.5;">
+            5 questions per game.<br/>
+            1 wrong → 1 hangman part.<br/>
+            5 wrong → ☠️ GAME OVER.
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-20">
+      <button class="btn btn-yellow btn-lg" id="btn-start">▶ START GAME</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ GAME SCREEN ═══════════ -->
+<div id="screen-game" class="hidden" style="max-width:860px;margin:20px auto;padding:20px;">
+  <div class="pixel-box yellow-box" style="padding:22px;">
+
+    <!-- Timer bar -->
+    <div class="timer-bar-container" style="margin-bottom:14px;">
+      <div class="timer-bar" id="time-bar" style="background:linear-gradient(90deg,var(--neon-yellow),var(--neon-orange));width:100%;"></div>
+    </div>
+
+    <div class="hangman-stage">
+
+      <!-- Hangman SVG -->
+      <div class="hangman-svg-wrap">
+        <svg class="hangman-svg" width="180" height="230" viewBox="0 0 180 230">
+          <!-- Gallows — always visible -->
+          <line x1="10" y1="222" x2="170" y2="222"/>
+          <line x1="40" y1="222" x2="40"  y2="10"/>
+          <line x1="40" y1="10"  x2="115" y2="10"/>
+          <line x1="115" y1="10" x2="115" y2="38"/>
+          <!-- Rope -->
+          <line class="hangman-part" id="hp-rope" x1="115" y1="38" x2="115" y2="58"/>
+          <!-- Head -->
+          <circle class="hangman-part" id="hp-head" cx="115" cy="74" r="17"/>
+          <!-- Body -->
+          <line class="hangman-part" id="hp-body" x1="115" y1="91"  x2="115" y2="148"/>
+          <!-- Arms -->
+          <g class="hangman-part" id="hp-arms">
+            <line x1="115" y1="105" x2="87"  y2="130"/>
+            <line x1="115" y1="105" x2="143" y2="130"/>
+          </g>
+          <!-- Legs -->
+          <g class="hangman-part" id="hp-legs">
+            <line x1="115" y1="148" x2="88"  y2="185"/>
+            <line x1="115" y1="148" x2="142" y2="185"/>
+          </g>
+        </svg>
+      </div>
+
+      <!-- Right side -->
+      <div class="hangman-right">
+
+        <!-- Question progress dots -->
+        <div id="problem-label">QUESTION PROGRESS</div>
+        <div class="q-progress" id="q-progress"></div>
+
+        <!-- Problem -->
+        <div class="problem-display" id="problem-display">?</div>
+
+        <!-- Feedback -->
+        <div class="feedback-flash" id="feedback"></div>
+
+        <!-- Input -->
+        <div class="answer-input-row">
+          <input class="big-num-input" type="number" id="answer-input" placeholder="?" autocomplete="off"/>
+          <button class="btn btn-yellow" id="btn-answer">▶ GO</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ ROUND RESULT FLASH ═══════════ -->
+<div id="round-flash" class="hidden"
+     style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.88);
+            display:flex;align-items:center;justify-content:center;z-index:500;flex-direction:column;gap:14px;">
+  <div id="rf-emoji"  style="font-size:84px;"></div>
+  <div id="rf-label" style="font-size:14px;font-family:'Press Start 2P',monospace;"></div>
+  <div id="rf-ans"   class="vt323" style="font-size:28px;color:var(--text-dim);"></div>
+  <div id="rf-parts" class="vt323" style="font-size:20px;color:var(--neon-yellow);"></div>
+</div>
+
+<!-- ═══════════ RESULTS ═══════════ -->
+<div id="screen-results" class="hidden" style="max-width:620px;margin:30px auto;padding:20px;text-align:center;">
+  <div class="pixel-box yellow-box" style="padding:32px;">
+    <div id="res-emoji" style="font-size:64px;margin-bottom:14px;"></div>
+    <div id="res-title" class="neon-yellow" style="font-size:16px;margin-bottom:20px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+      <div class="pixel-box" style="padding:12px;"><div style="font-size:7px;color:var(--text-dim)">SCORE</div><div id="res-score" class="neon-green" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:12px;"><div style="font-size:7px;color:var(--text-dim)">CORRECT</div><div id="res-correct" class="neon-yellow" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:12px;"><div style="font-size:7px;color:var(--text-dim)">TIME</div><div id="res-time" class="neon-pink" style="font-size:20px;font-family:'Varela Round',monospace;"></div></div>
+    </div>
+    <!-- Result dots -->
+    <div class="q-progress" id="res-dots" style="margin-bottom:20px;"></div>
+    <div id="res-breakdown" style="margin-bottom:20px;display:flex;flex-direction:column;gap:8px;"></div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-yellow" id="btn-again">▶ PLAY AGAIN</button>
+      <a href="../pages/leaderboard.html" class="btn btn-cyan">🏆 LEADERBOARD</a>
+      <a href="../index.html" class="btn btn-green">← HOME</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/core.js"></script>
+<script>
+  const { randomInt, showNotif, Leaderboard, Session } = MathArcade;
+  const session = Session.get();
+  document.getElementById('nav-user').innerHTML = session
+    ? `<span style="color:var(--neon-yellow);font-size:7px">${session.name}</span>` : '';
+
+  // ─── Hangman uses 5 parts matching 5 questions ───
+  const PARTS = ['hp-rope', 'hp-head', 'hp-body', 'hp-arms', 'hp-legs'];
+  const TOTAL_QUESTIONS = 5;
+
+  let cfg = {};
+  let currentQ = 0;          // 0-indexed current question
+  let score = 0;
+  let correctCount = 0;
+  let wrongCount = 0;
+  let results = [];           // true/false per question
+  let resultsDetails = [];    // { question, answer, userAns, correct }
+  let currentAnswer = 0;
+  let currentQuestionStr = '';
+  let timerObj = null;
+  let gameStartTime = 0;
+
+  // ─── Buttons ───
+  document.getElementById('btn-start').addEventListener('click', startGame);
+  document.getElementById('btn-answer').addEventListener('click', submitAnswer);
+  document.getElementById('answer-input').addEventListener('keydown', e => { if (e.key === 'Enter') submitAnswer(); });
+  document.getElementById('btn-again').addEventListener('click', () => {
+    document.getElementById('screen-results').classList.add('hidden');
+    document.getElementById('screen-settings').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+  });
+
+  // ─── Start ───
+  function startGame() {
+    cfg = {
+      op:      document.getElementById('op-select').value,
+      diff:    document.getElementById('diff-select').value,
+      complex: document.getElementById('complex-select').value,
+      time:    parseInt(document.getElementById('time-select').value)
+    };
+    currentQ = 0; score = 0; correctCount = 0; wrongCount = 0; results = []; resultsDetails = [];
+    gameStartTime = Date.now();
+    
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
+
+    resetHangman();
+    buildProgressDots('#q-progress');
+
+    document.getElementById('screen-settings').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'flex';
+
+    nextQuestion();
+  }
+
+  function getNumCount() {
+    if (cfg.complex === 'very_easy') return 2;
+    if (cfg.complex === 'easy') return 3;
+    if (cfg.complex === 'medium') return 4;
+    return 5;
+  }
+
+  // ─── Range helper ───
+  function getRange() {
+    if (cfg.diff === '2-3') return [10, 999];
+    if (cfg.diff === '3-4') return [100, 9999];
+    if (cfg.diff === '4-5') return [1000, 99999];
+    return [10000, 999999];
+  }
+
+  // ─── Problem generator ───
+  function genProblem() {
+    const [min, max] = getRange();
+    let allowedOps = [cfg.op];
+    if (cfg.op === 'mixed') allowedOps = ['add', 'sub', 'mul', 'div'];
+    if (cfg.op === 'addsub') allowedOps = ['add', 'sub'];
+    
+    const numCount = getNumCount();
+    
+    for (let attempt = 0; attempt < 8000; attempt++) {
+      let nums = [];
+      for (let i = 0; i < numCount; i++) nums.push(randomInt(min, max));
+      
+      let opsStr = [];
+      for (let i = 0; i < numCount - 1; i++) opsStr.push(allowedOps[randomInt(0, allowedOps.length - 1)]);
+
+      for (let i = 0; i < opsStr.length; i++) {
+        // Enforce strong digit constraints to guarantee solvability and mental math sanity
+        if (opsStr[i] === 'div') nums[i+1] = randomInt(2, 99); 
+        if (opsStr[i] === 'mul') nums[i+1] = randomInt(2, 99);
+      }
+
+      // Reverse pass to artificially boost exact division success rates
+      // By making A a multiple of B in A/B constructs
+      for (let i = opsStr.length - 1; i >= 0; i--) {
+        if (opsStr[i] === 'div') {
+           // Try to artificially inflate the predecessor so division evaluates to integer naturally
+           if (nums[i] < 10000) nums[i] = nums[i] * nums[i+1];
+        }
+      }
+      
+      let opSyms = { add: '+', sub: '-', mul: '*', div: '/' };
+      let dispSyms = { add: ' + ', sub: ' − ', mul: ' × ', div: ' ÷ ' };
+      
+      let evalStr = "" + nums[0];
+      let dispStr = "" + nums[0];
+      for (let i = 0; i < opsStr.length; i++) {
+        evalStr += opSyms[opsStr[i]] + nums[i+1];
+        dispStr += dispSyms[opsStr[i]] + nums[i+1];
+      }
+      
+      try {
+        let finalAns = eval(evalStr);
+        if (!Number.isInteger(finalAns)) continue;
+        if (finalAns < 0 || finalAns > 999999) continue;
+        
+        return { str: dispStr + ' = ?', ans: finalAns };
+      } catch(e) { }
+    }
+    
+    // Failsafe bounds
+    return { str: "12 + 8 = ?", ans: 20 };
+  }
+
+  // ─── Load a question ───
+  function nextQuestion() {
+    if (currentQ >= TOTAL_QUESTIONS) { endGame(); return; }
+
+    const { str, ans } = genProblem();
+    currentAnswer = ans;
+    currentQuestionStr = str;
+    document.getElementById('problem-display').textContent = str;
+    document.getElementById('feedback').textContent = '';
+    document.getElementById('answer-input').value = '';
+    document.getElementById('answer-input').focus();
+
+    updateDots('#q-progress', currentQ, results);
+    updateHUD();
+
+    if (timerObj) timerObj.stop();
+    if (cfg.time > 0) startQuestionTimer();
+    else document.getElementById('time-bar').style.width = '100%';
+  }
+
+  // ─── Submit ───
+  function submitAnswer() {
+    if (timerObj) timerObj.stop();
+    const val = parseInt(document.getElementById('answer-input').value);
+    if (isNaN(val)) { showNotif('ENTER A NUMBER!', 'yellow'); return; }
+    processAnswer(val === currentAnswer);
+  }
+
+  function processAnswer(correct) {
+    results.push(correct);
+    const userVal = document.getElementById('answer-input').value;
+    resultsDetails.push({ question: currentQuestionStr, answer: currentAnswer, userAns: userVal, correct });
+
+    if (correct) {
+      if (MathArcade.Audio) MathArcade.Audio.playCorrect();
+      correctCount++;
+      score += cfg.time > 0
+        ? Math.max(50, 300 - Math.floor((Date.now() - questionStart) / 100))
+        : 200;
+      flashRound(true);
+    } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      wrongCount++;
+      revealNextPart();
+      flashRound(false);
+    }
+    currentQ++;
+    updateHUD();
+  }
+
+  // ─── Time up ───
+  function timeUp() {
+    if (MathArcade.Audio) MathArcade.Audio.playWrong();
+    results.push(false);
+    resultsDetails.push({ question: currentQuestionStr, answer: currentAnswer, userAns: 'TIME OUT', correct: false });
+    wrongCount++;
+    revealNextPart();
+    flashRound(false, true);
+    currentQ++;
+    updateHUD();
+  }
+
+  // ─── Timer ───
+  let questionStart = 0;
+  function startQuestionTimer() {
+    const bar = document.getElementById('time-bar');
+    const total = cfg.time * 1000;
+    questionStart = Date.now();
+    timerObj = { rafId: null, stop() { cancelAnimationFrame(this.rafId); } };
+    function tick() {
+      const pct = Math.max(0, 100 - ((Date.now() - questionStart) / total * 100));
+      bar.style.width = pct + '%';
+      bar.style.background = pct > 50
+        ? 'linear-gradient(90deg,var(--neon-green),var(--neon-yellow))'
+        : pct > 25
+          ? 'linear-gradient(90deg,var(--neon-yellow),var(--neon-orange))'
+          : 'linear-gradient(90deg,var(--neon-pink),red)';
+      document.getElementById('hud-time').textContent = (pct / 100 * cfg.time).toFixed(0) + 's';
+      if (pct > 0) timerObj.rafId = requestAnimationFrame(tick);
+      else timeUp();
+    }
+    timerObj.rafId = requestAnimationFrame(tick);
+  }
+
+  // ─── Flash result overlay ───
+  function flashRound(correct, timedOut = false) {
+    const overlay = document.getElementById('round-flash');
+    overlay.classList.remove('hidden');
+    document.getElementById('rf-emoji').textContent = correct ? '✅' : (wrongCount >= TOTAL_QUESTIONS ? '☠️' : '❌');
+    document.getElementById('rf-label').innerHTML = correct
+      ? `<span class="neon-green">CORRECT! +${score > 0 ? '' : ''}PTS</span>`
+      : timedOut
+        ? `<span class="neon-pink">TIME'S UP!</span>`
+        : `<span class="neon-pink">WRONG!</span>`;
+    document.getElementById('rf-ans').textContent = `ANSWER: ${currentAnswer}`;
+    const partsLeft = TOTAL_QUESTIONS - wrongCount;
+    document.getElementById('rf-parts').textContent = wrongCount >= TOTAL_QUESTIONS
+      ? '☠️ HANGMAN COMPLETE — GAME OVER!'
+      : correct
+        ? `${TOTAL_QUESTIONS - currentQ - 1} QUESTIONS REMAIN`
+        : `${partsLeft} PARTS REMAIN`;
+    setTimeout(() => {
+      overlay.classList.add('hidden');
+      if (wrongCount >= TOTAL_QUESTIONS) { endGame(); }
+      else { nextQuestion(); }
+    }, 1400);
+  }
+
+  // ─── Hangman parts ───
+  function revealNextPart() {
+    const part = PARTS[wrongCount - 1];
+    if (part) document.getElementById(part)?.classList.add('visible');
+  }
+  function resetHangman() {
+    PARTS.forEach(id => document.getElementById(id)?.classList.remove('visible'));
+  }
+
+  // ─── Progress dots ───
+  function buildProgressDots(selector) {
+    const container = document.querySelector(selector);
+    if (!container) return;
+    container.innerHTML = Array.from({ length: TOTAL_QUESTIONS }, (_, i) =>
+      `<div class="qp-dot upcoming" id="${selector.slice(1)}-dot-${i}"></div>`
+    ).join('');
+  }
+  function updateDots(selector, current, results) {
+    for (let i = 0; i < TOTAL_QUESTIONS; i++) {
+      const el = document.getElementById(`${selector.slice(1)}-dot-${i}`);
+      if (!el) continue;
+      if (i < results.length) {
+        el.className = 'qp-dot ' + (results[i] ? 'correct' : 'wrong');
+      } else if (i === current) {
+        el.className = 'qp-dot current';
+      } else {
+        el.className = 'qp-dot upcoming';
+      }
+    }
+  }
+
+  // ─── HUD ───
+  function updateHUD() {
+    document.getElementById('hud-score').textContent   = score;
+    document.getElementById('hud-round').textContent   = `${currentQ + 1}/${TOTAL_QUESTIONS}`;
+    document.getElementById('hud-correct').textContent = correctCount;
+    if (cfg.time === 0) document.getElementById('hud-time').textContent = '∞';
+  }
+
+  // ─── Game over ───
+  function endGame() {
+    if (timerObj) timerObj.stop();
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-results').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+
+    const survived = wrongCount < TOTAL_QUESTIONS;
+    const timeMs   = Date.now() - gameStartTime;
+    
+    if (MathArcade.Audio) {
+      if (survived) MathArcade.Audio.playWin();
+      else setTimeout(() => MathArcade.Audio.playWrong(), 200);
+    }
+
+    document.getElementById('res-emoji').textContent  = survived ? (correctCount >= 4 ? '🏆' : '😅') : '☠️';
+    document.getElementById('res-title').textContent  = survived
+      ? (correctCount >= 4 ? 'HERO! HE LIVES!' : 'SURVIVOR!')
+      : 'THE HANGMAN FELL…';
+    document.getElementById('res-score').textContent   = score;
+    document.getElementById('res-correct').textContent = `${correctCount}/${TOTAL_QUESTIONS}`;
+    document.getElementById('res-time').textContent    = (timeMs / 1000).toFixed(1) + 's';
+
+    // Result dots
+    const dotWrap = document.getElementById('res-dots');
+    dotWrap.innerHTML = results.map(r =>
+      `<div class="qp-dot ${r ? 'correct' : 'wrong'}"></div>`
+    ).join('');
+
+    const breakdownWrap = document.getElementById('res-breakdown');
+    breakdownWrap.innerHTML = resultsDetails.map(d => {
+      if (d.correct) {
+        return `<div class="pixel-box" style="padding:10px;font-family:'VT323',monospace;font-size:18px;border-color:var(--neon-green)">
+          <span style="color:var(--neon-yellow)">${d.question}</span> <span class="neon-green">${d.answer}</span> <span class="neon-green">✓</span>
+        </div>`;
+      } else {
+        return `<div class="pixel-box" style="padding:10px;font-family:'VT323',monospace;font-size:18px;border-color:var(--neon-pink)">
+          <span style="color:var(--neon-yellow)">${d.question}</span> <span class="neon-pink">${d.userAns}</span> ✗ (Answer: <span class="neon-green">${d.answer}</span>)
+        </div>`;
+      }
+    }).join('');
+
+    Leaderboard.submit('hangman', score, { correct: correctCount, total: TOTAL_QUESTIONS, timeTaken: timeMs });
+  }
+</script>
+</body>
+</html>

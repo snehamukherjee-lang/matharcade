@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Memory Cascade — MathArcade</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    #game-canvas {
+      position: relative;
+      width: 100%;
+      height: 70vh;
+      min-height: 400px;
+      background: radial-gradient(ellipse at center, rgba(255,0,110,0.06) 0%, transparent 70%);
+      border: 2px solid rgba(255,0,110,0.3);
+      overflow: hidden;
+    }
+    .floating-card {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 20px;
+      border: 2px solid;
+      background: rgba(0,0,0,0.85);
+      backdrop-filter: blur(4px);
+      animation: float-in 0.3s ease forwards, float-out 0.3s ease var(--out-delay) forwards;
+      pointer-events: none;
+      z-index: 10;
+    }
+    @keyframes float-in {
+      from { opacity: 0; transform: scale(0.5); }
+      to { opacity: 1; transform: scale(1); }
+    }
+    @keyframes float-out {
+      from { opacity: 1; transform: scale(1); }
+      to { opacity: 0; transform: scale(0.5) rotate(10deg); }
+    }
+    .fc-number {
+      font-family: 'Varela Round', monospace;
+      font-weight: 900;
+      font-size: clamp(24px, 4vw, 48px);
+      line-height: 1;
+    }
+    .fc-op {
+      font-size: clamp(16px, 2vw, 28px);
+      margin-bottom: 4px;
+      font-family: 'Press Start 2P', monospace;
+    }
+    .sequence-strip {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      padding: 12px;
+      min-height: 48px;
+    }
+    .seq-chip {
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      padding: 4px 10px;
+      border: 1px solid rgba(255,0,110,0.3);
+      color: var(--text-dim);
+      transition: all 0.3s;
+    }
+    .seq-chip.revealed { color: var(--neon-pink); border-color: var(--neon-pink); text-shadow: 0 0 8px var(--neon-pink); }
+    .ready-countdown {
+      font-family: 'Varela Round', monospace;
+      font-size: 80px;
+      font-weight: 900;
+      color: var(--neon-pink);
+      text-shadow: 0 0 40px var(--neon-pink);
+      animation: countdown-pop 0.8s ease-in-out;
+    }
+    @keyframes countdown-pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      50% { transform: scale(1.3); }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+<div class="crt-corner tl"></div><div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div><div class="crt-corner br"></div>
+
+<nav class="navbar">
+  <div class="navbar-brand"><span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span></div>
+  <ul class="navbar-nav">
+    <li><a href="../index.html">← HOME</a></li>
+    <li><span class="neon-pink" style="font-size:9px;">🧠 MEMORY CASCADE</span></li>
+    <li id="nav-user"></li>
+  </ul>
+</nav>
+
+<div class="game-hud" id="hud" style="display:none;">
+  <div class="hud-item"><div class="hud-label">ROUND</div><div class="hud-value neon-pink" id="hud-round">1/5</div></div>
+  <div class="hud-item"><div class="hud-label">SCORE</div><div class="hud-value neon-green" id="hud-score">0</div></div>
+  <div class="hud-item"><div class="hud-label">SHOWN</div><div class="hud-value neon-cyan" id="hud-shown">0/10</div></div>
+  <div class="hud-item"><div class="hud-label">PHASE</div><div class="hud-value neon-yellow" id="hud-phase">WATCH</div></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="screen-settings" style="max-width:600px;margin:40px auto;padding:20px;">
+  <div class="pixel-box pink-box" style="padding:32px;">
+    <h1 class="neon-pink text-center" style="font-size:16px;margin-bottom:8px;">🧠 MEMORY CASCADE</h1>
+    <p class="vt323 text-center" style="font-size:22px;color:var(--text-dim);margin-bottom:30px;">
+      Numbers float across the screen. Track them all. Find the final answer!
+    </p>
+    <div class="settings-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>OPERATION</label>
+        <select class="pixel-input pink" id="op-select">
+          <option value="add">➕ ADDITION</option>
+          <option value="sub">➖ SUBTRACTION</option>
+          <option value="addsub">➕➖ ADD & SUB</option>
+          <option value="mul">✖️  MULTIPLICATION</option>
+          <option value="div">➗ DIVISION</option>
+          <option value="mixed" selected>🔀 MIXED</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>DIFFICULTY</label>
+        <select class="pixel-input pink" id="diff-select">
+          <option value="easy">😊 EASY (1-99)</option>
+          <option value="medium" selected>⚡ MEDIUM (100-9999)</option>
+          <option value="hard">🔥 HARD (10000-99999)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>SEQUENCE LENGTH</label>
+        <select class="pixel-input pink" id="seq-select">
+          <option value="3">3 NUMBERS</option>
+          <option value="5">5 NUMBERS</option>
+          <option value="6">6 NUMBERS</option>
+          <option value="8">8 NUMBERS</option>
+          <option value="10" selected>10 NUMBERS</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>ROUNDS</label>
+        <select class="pixel-input pink" id="rounds-select">
+          <option value="3">3 ROUNDS</option>
+          <option value="5" selected>5 ROUNDS</option>
+          <option value="10">10 ROUNDS</option>
+        </select>
+      </div>
+    </div>
+    <div class="pixel-box" style="padding:16px;margin-top:16px;border-color:rgba(255,0,110,0.3);">
+      <div class="vt323" style="font-size:18px;color:var(--text-dim);line-height:1.7;">
+        • The first number appears alone for 2 seconds<br/>
+        • Each following number (with an operation) appears for 1.5 seconds<br/>
+        • Numbers appear 1 second apart<br/>
+        • They float across different positions on screen<br/>
+        • After the sequence finishes, give the FINAL result!
+      </div>
+    </div>
+    <div class="text-center mt-20">
+      <button class="btn btn-pink btn-lg" id="btn-start">▶ START</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="hidden" style="padding:20px;">
+  <div id="game-canvas">
+    <div id="canvas-content" style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;">
+      <div id="status-msg" class="neon-pink" style="font-size:14px;letter-spacing:3px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ANSWER TIMER (FIXED TOP LEFT) -->
+<div id="cascade-answer-timer-container" class="hidden" style="position:fixed;top:80px;left:20px;text-align:center;z-index:900;opacity:0.8;">
+  <div style="font-size:24px;margin-bottom:2px;">⏱️</div>
+  <div id="cascade-answer-timer" class="neon-yellow" style="font-family:'Varela Round',monospace;font-size:14px;letter-spacing:1px;text-shadow:0 0 10px rgba(0,0,0,0.8);">0.00s</div>
+</div>
+
+<!-- ANSWER SCREEN -->
+<div id="screen-answer" class="hidden" style="max-width:500px;margin:40px auto;padding:20px;text-align:center;">
+  <div class="pixel-box pink-box" style="padding:32px;">
+    <div class="neon-pink" style="font-size:12px;letter-spacing:3px;margin-bottom:12px;">WHAT'S THE RESULT?</div>
+    <div class="vt323" style="font-size:22px;color:var(--text-dim);margin-bottom:20px;">Calculate the final answer from memory!</div>
+    <input class="big-answer-input" type="number" id="answer-input"
+      style="font-family:'Varela Round',monospace;font-size:32px;font-weight:700;background:transparent;border:none;border-bottom:4px solid var(--neon-pink);color:var(--neon-pink);text-align:center;outline:none;width:100%;padding:8px;"
+      placeholder="?"/>
+    <button class="btn btn-pink btn-lg" id="btn-submit" style="margin-top:20px;">✓ SUBMIT</button>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="screen-results" class="hidden" style="max-width:600px;margin:30px auto;padding:20px;text-align:center;">
+  <div class="pixel-box pink-box" style="padding:32px;">
+    <div id="res-emoji" style="font-size:56px;margin-bottom:12px;"></div>
+    <div id="res-title" class="neon-pink" style="font-size:16px;margin-bottom:20px;"></div>
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:20px;">
+      <div class="pixel-box" style="padding:12px;"><div style="font-size:7px;color:var(--text-dim)">SCORE</div><div id="res-score" class="neon-green" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:12px;"><div style="font-size:7px;color:var(--text-dim)">CORRECT</div><div id="res-correct" class="neon-yellow" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:12px;"><div style="font-size:7px;color:var(--text-dim)">TIME</div><div id="res-time" class="neon-pink" style="font-size:20px;font-family:'Varela Round',monospace;"></div></div>
+    </div>
+    <div id="res-breakdown" style="margin-bottom:20px;display:flex;flex-direction:column;gap:8px;text-align:left;"></div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-pink" id="btn-again">▶ PLAY AGAIN</button>
+      <a href="../pages/leaderboard.html" class="btn btn-cyan">🏆 LEADERBOARD</a>
+      <a href="../index.html" class="btn btn-green">← HOME</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/core.js"></script>
+<script>
+  const { randomInt, showNotif, Leaderboard, Session } = MathArcade;
+  const session = Session.get();
+  document.getElementById('nav-user').innerHTML = session ?
+    `<span style="color:var(--neon-yellow);font-size:7px">${session.name}</span>` : '';
+
+  let SEQUENCE_LEN = 10;
+  const DISPLAY_MS = 1500;
+  const GAP_MS = 1000;
+  const FIRST_DISPLAY_MS = 2000;
+
+  let config = {};
+  let sequence = []; // {num, op} first has no op
+  let currentRound = 0;
+  let totalRounds = 5;
+  let score = 0;
+  let correctCount = 0;
+  let roundResults = [];
+  let roundDetails = [];  // { sequenceStr, correctAns, userAns, isCorrect }
+  let gameStartTime = 0;
+  let answerStartTime = 0;
+  let answerTimerInterval = null;
+
+  const ops = [
+    { name: 'add', sym: '+', fn: (a,b) => a+b, color: 'var(--neon-green)' },
+    { name: 'sub', sym: '-', fn: (a,b) => a-b, color: 'var(--neon-cyan)' },
+    { name: 'mul', sym: '×', fn: (a,b) => a*b, color: 'var(--neon-pink)' },
+    { name: 'div', sym: '÷', fn: (a,b) => Math.floor(a/b), color: 'var(--neon-yellow)' }
+  ];
+
+  document.getElementById('btn-start').addEventListener('click', startGame);
+  document.getElementById('btn-submit').addEventListener('click', submitAnswer);
+  document.getElementById('answer-input').addEventListener('keydown', e => { if(e.key==='Enter') submitAnswer(); });
+  document.getElementById('btn-again').addEventListener('click', () => {
+    document.getElementById('screen-results').classList.add('hidden');
+    document.getElementById('screen-settings').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+  });
+
+  function getRange() {
+    const d = document.getElementById('diff-select').value;
+    return d === 'easy' ? [1, 99] : d === 'medium' ? [100, 9999] : [10000, 99999];
+  }
+
+  function startGame() {
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
+    config.rounds = parseInt(document.getElementById('rounds-select').value);
+    config.op = document.getElementById('op-select').value;
+    SEQUENCE_LEN = parseInt(document.getElementById('seq-select').value);
+    totalRounds = config.rounds;
+    currentRound = 0; score = 0; correctCount = 0; roundResults = []; roundDetails = [];
+    gameStartTime = Date.now();
+    document.getElementById('screen-settings').classList.add('hidden');
+    document.getElementById('hud').style.display = 'flex';
+    nextRound();
+  }
+
+  function nextRound() {
+    if (currentRound >= totalRounds) { showFinalResults(); return; }
+    currentRound++;
+    updateHUD('WATCH');
+    buildSequence();
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('screen-answer').classList.add('hidden');
+    runCascade();
+  }
+
+  function buildSequence() {
+    const [min, max] = getRange();
+    let allowedOps = [config.op];
+    if (config.op === 'mixed') allowedOps = ['add', 'sub', 'mul', 'div'];
+    if (config.op === 'addsub') allowedOps = ['add', 'sub'];
+
+    sequence = [];
+    let runningTotal = randomInt(min, max);
+    sequence.push({ num: runningTotal, op: null, opObj: null });
+
+    const MAX_VAL = 999999;
+    for (let i = 1; i < SEQUENCE_LEN; i++) {
+      const selOpName = allowedOps[randomInt(0, allowedOps.length - 1)];
+      let finalOp = ops.find(o => o.name === selOpName);
+      let nextNum;
+
+      if (finalOp.name === 'div') {
+        let factors = [];
+        const maxDivisor = Math.min(Math.abs(runningTotal), 99);
+        for (let f = 2; f <= maxDivisor; f++) {
+          if (runningTotal % f === 0) factors.push(f);
+        }
+        if (factors.length > 0) {
+          nextNum = factors[randomInt(0, factors.length - 1)];
+        } else {
+          // Fallback to addition if no valid factors exist
+          finalOp = ops.find(o => o.name === 'add');
+        }
+      }
+
+      if (finalOp.name === 'mul') {
+        let maxMul = Math.floor(MAX_VAL / Math.max(1, Math.abs(runningTotal)));
+        if (maxMul < 2) {
+          finalOp = ops.find(o => o.name === (runningTotal > 0 ? 'sub' : 'add'));
+        } else {
+          nextNum = randomInt(1, Math.min(99, maxMul));
+        }
+      }
+
+      // Check addition overflow limits
+      if (finalOp.name === 'add') {
+        if (!nextNum) nextNum = randomInt(min, max);
+        if (runningTotal + nextNum > MAX_VAL) {
+          finalOp = ops.find(o => o.name === 'sub');
+        }
+      }
+
+      // Check subtraction underflow limits (ensuring it never drops below 0)
+      if (finalOp.name === 'sub') {
+        if (!nextNum) nextNum = randomInt(min, max);
+        if (runningTotal - nextNum < 0) {
+          if (runningTotal >= min) {
+            nextNum = randomInt(min, runningTotal);
+          } else {
+            finalOp = ops.find(o => o.name === 'add');
+          }
+        }
+      }
+
+      sequence.push({ num: nextNum, op: finalOp.sym, opObj: finalOp });
+      runningTotal = finalOp.fn(runningTotal, nextNum);
+    }
+  }
+
+  // Removed buildSeqStrip to ensure memory requirement
+
+  async function runCascade() {
+    const canvas = document.getElementById('game-canvas');
+    // Clear old cards
+    canvas.querySelectorAll('.floating-card').forEach(el => el.remove());
+    document.getElementById('status-msg').textContent = 'REMEMBER THE SEQUENCE!';
+
+    for (let i = 0; i < SEQUENCE_LEN; i++) {
+      updateHUD('WATCH');
+      document.getElementById('hud-shown').textContent = `${i+1}/${SEQUENCE_LEN}`;
+
+      const item = sequence[i];
+      const displayMs = i === 0 ? FIRST_DISPLAY_MS : DISPLAY_MS;
+      const card = spawnCard(canvas, item, displayMs);
+
+      await sleep(displayMs + 100);
+      if (canvas.contains(card)) canvas.removeChild(card);
+
+      if (i < SEQUENCE_LEN - 1) await sleep(GAP_MS);
+    }
+    // Show answer screen
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-answer').classList.remove('hidden');
+
+    document.getElementById('cascade-answer-timer-container').classList.remove('hidden');
+    answerStartTime = Date.now();
+    const timerEl = document.getElementById('cascade-answer-timer');
+    timerEl.textContent = '0.00s';
+    answerTimerInterval = setInterval(() => {
+      timerEl.textContent = ((Date.now() - answerStartTime) / 1000).toFixed(2) + 's';
+    }, 50);
+
+    document.getElementById('answer-input').value = '';
+    document.getElementById('answer-input').focus();
+    updateHUD('ANSWER!');
+  }
+
+  function spawnCard(canvas, item, displayMs) {
+    if (MathArcade.Audio) MathArcade.Audio.playBlip();
+    const card = document.createElement('div');
+    card.className = 'floating-card';
+    const color = item.opObj ? item.opObj.color : 'var(--neon-green)';
+    card.style.borderColor = color;
+    card.style.boxShadow = `0 0 20px ${color}`;
+    card.style.setProperty('--out-delay', `${displayMs}ms`);
+
+    const cx = randomInt(10, 80);
+    const cy = randomInt(10, 75);
+    card.style.left = cx + '%';
+    card.style.top = cy + '%';
+    card.style.transform = 'translate(-50%, -50%)';
+
+    if (item.op) {
+      const opEl = document.createElement('div');
+      opEl.className = 'fc-op';
+      opEl.style.color = color;
+      opEl.style.textShadow = `0 0 10px ${color}`;
+      opEl.textContent = item.op;
+      card.appendChild(opEl);
+    }
+    const numEl = document.createElement('div');
+    numEl.className = 'fc-number';
+    numEl.style.color = color;
+    numEl.style.textShadow = `0 0 20px ${color}`;
+    numEl.textContent = item.num;
+    card.appendChild(numEl);
+    canvas.appendChild(card);
+    return card;
+  }
+
+  function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+  function submitAnswer() {
+    if (answerTimerInterval) clearInterval(answerTimerInterval);
+    const inp = document.getElementById('answer-input');
+    const userAns = parseInt(inp.value);
+    if (isNaN(userAns)) {
+      showNotif('ENTER A NUMBER!', 'pink');
+      // restart timer if error
+      answerTimerInterval = setInterval(() => {
+        document.getElementById('cascade-answer-timer').textContent = ((Date.now() - answerStartTime) / 1000).toFixed(2) + 's';
+      }, 50);
+      return; 
+    }
+
+    document.getElementById('cascade-answer-timer-container').classList.add('hidden');
+
+    // Calculate correct answer
+    let ans = sequence[0].num;
+    let eqStr = sequence[0].num.toString();
+    for (let i = 1; i < sequence.length; i++) {
+      ans = sequence[i].opObj.fn(ans, sequence[i].num);
+      eqStr += " " + sequence[i].op + " " + sequence[i].num;
+    }
+
+    const isCorrect = userAns === ans;
+    roundDetails.push({ sequenceStr: eqStr, correctAns: ans, userAns: userAns, isCorrect });
+
+    if (isCorrect) { 
+      if (MathArcade.Audio) MathArcade.Audio.playCorrect();
+      score += 200; correctCount++; showNotif('✓ CORRECT!', 'green'); 
+    } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      showNotif(`✗ WRONG! ANSWER: ${ans}`, 'pink');
+    }
+    roundResults.push(isCorrect);
+    nextRound();
+  }
+
+  function showFinalResults() {
+    document.getElementById('screen-answer').classList.add('hidden');
+    document.getElementById('screen-results').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+
+    const pct = Math.round(correctCount / totalRounds * 100);
+    const timeMs = Date.now() - gameStartTime;
+    
+    if (MathArcade.Audio) {
+      if (pct >= 60) MathArcade.Audio.playWin();
+      else setTimeout(() => MathArcade.Audio.playWrong(), 200);
+    }
+
+    document.getElementById('res-emoji').textContent = pct >= 80 ? '🏆' : pct >= 60 ? '⭐' : '💪';
+    document.getElementById('res-title').textContent = pct >= 80 ? 'INCREDIBLE MEMORY!' : pct >= 60 ? 'GREAT RECALL!' : 'KEEP TRAINING!';
+    document.getElementById('res-score').textContent = score;
+    document.getElementById('res-correct').textContent = `${correctCount}/${totalRounds}`;
+    document.getElementById('res-time').textContent = (timeMs/1000).toFixed(1) + 's';
+
+    const breakdownWrap = document.getElementById('res-breakdown');
+    breakdownWrap.innerHTML = roundDetails.map((d, i) => {
+      if (d.isCorrect) {
+        return `<div class="pixel-box" style="padding:8px;font-family:'VT323',monospace;font-size:16px;border-color:var(--neon-green)">
+          <span style="color:var(--text-dim)">Round ${i+1}:</span> <span style="color:var(--neon-yellow)">${d.sequenceStr}</span> = <span class="neon-green">${d.correctAns}</span> ✓
+        </div>`;
+      } else {
+        return `<div class="pixel-box" style="padding:8px;font-family:'VT323',monospace;font-size:16px;border-color:var(--neon-pink)">
+          <span style="color:var(--text-dim)">Round ${i+1}:</span> <span style="color:var(--neon-yellow)">${d.sequenceStr}</span> = <span class="neon-green">${d.correctAns}</span> <br/>
+          <span style="font-size:14px;color:var(--text-dim)">You answered:</span> <span class="neon-pink">${d.userAns}</span> ✗
+        </div>`;
+      }
+    }).join('');
+
+    Leaderboard.submit('memory-cascade', score, { correct: correctCount, total: totalRounds, timeTaken: timeMs });
+  }
+
+  function updateHUD(phase) {
+    document.getElementById('hud-round').textContent = `${currentRound}/${totalRounds}`;
+    document.getElementById('hud-score').textContent = score;
+    document.getElementById('hud-phase').textContent = phase;
+  }
+</script>
+</body>
+</html>

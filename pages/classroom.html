@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Classroom — MathArcade</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .classroom-header { padding: 30px; border-bottom: 2px solid var(--neon-cyan); }
+    .students-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 14px; padding: 20px 0; }
+    .student-card { padding: 14px; text-align:center; }
+    .student-avatar { font-size: 32px; margin-bottom: 8px; }
+    .student-name { font-size: 8px; color: var(--neon-green); }
+    .student-role { font-size: 7px; color: var(--text-dim); margin-top: 4px; }
+    .game-launch-card { padding: 20px; display:flex; align-items:center; gap:16px; margin-bottom:14px; cursor:pointer; text-decoration:none; }
+    .game-launch-card:hover { transform: translateX(6px); }
+    .share-section { background: rgba(0,0,0,0.5); padding: 20px; border: 2px dashed var(--neon-yellow); margin: 20px 0; text-align:center; }
+  </style>
+</head>
+<body>
+<div class="crt-corner tl"></div><div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div><div class="crt-corner br"></div>
+<nav class="navbar">
+  <div class="navbar-brand"><span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span></div>
+  <ul class="navbar-nav">
+    <li><a href="../index.html">HOME</a></li>
+    <li><a href="classroom.html" style="color:var(--neon-cyan)">CLASSROOM</a></li>
+    <li><a href="leaderboard.html">LEADERBOARD</a></li>
+    <li id="nav-exit"></li>
+  </ul>
+</nav>
+
+<div style="max-width:1100px;margin:0 auto;padding:30px 20px;" id="page-content">
+  <div id="no-session" class="hidden text-center" style="padding:80px 20px;">
+    <div style="font-size:48px;margin-bottom:20px;">🏫</div>
+    <h2 class="neon-cyan" style="font-size:16px;margin-bottom:16px;">CLASSROOM</h2>
+    <p class="vt323" style="font-size:22px;color:var(--text-dim);margin-bottom:30px;">Login first to access classroom features</p>
+    <a href="../index.html" class="btn btn-cyan">← BACK TO HOME</a>
+  </div>
+
+  <div id="teacher-view" class="hidden">
+    <div class="classroom-header">
+      <div style="font-size:8px;color:var(--text-dim);letter-spacing:3px;margin-bottom:8px;">YOUR CLASSROOM</div>
+      <h1 id="class-title" class="neon-cyan" style="font-size:20px;margin-bottom:8px;"></h1>
+      <p id="class-meta" class="vt323" style="font-size:20px;color:var(--text-dim);"></p>
+    </div>
+
+    <!-- Share Section -->
+    <div class="share-section">
+      <div style="font-size:8px;color:var(--neon-yellow);margin-bottom:12px;letter-spacing:3px;">INVITE STUDENTS</div>
+      <div id="class-code-display" class="classroom-code" style="margin-bottom:16px;display:block;"></div>
+      <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+        <button class="btn btn-yellow" id="btn-copy-code">📋 COPY CODE</button>
+        <button class="btn btn-yellow" id="btn-copy-link">🔗 COPY LINK</button>
+      </div>
+    </div>
+
+    <!-- Students -->
+    <div style="margin-top:24px;">
+      <div style="font-size:9px;color:var(--neon-green);letter-spacing:3px;margin-bottom:12px;">ENROLLED STUDENTS (<span id="student-count">0</span>)</div>
+      <div class="students-grid" id="students-grid"></div>
+    </div>
+
+    <hr class="pixel-divider"/>
+
+    <!-- Launch Games -->
+    <div style="font-size:9px;color:var(--neon-cyan);letter-spacing:3px;margin-bottom:16px;">LAUNCH GAMES</div>
+    <div id="launch-games"></div>
+
+    <hr class="pixel-divider"/>
+
+    <!-- Class Leaderboard -->
+    <div style="font-size:9px;color:var(--neon-yellow);letter-spacing:3px;margin-bottom:16px;">CLASS LEADERBOARD</div>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <button class="btn btn-sm btn-green active-filter" data-game="flash-anzan" onclick="filterLB('flash-anzan',this)">FLASH ANZAN</button>
+      <button class="btn btn-sm btn-cyan" data-game="kenken" onclick="filterLB('kenken',this)">KENKEN</button>
+      <button class="btn btn-sm btn-pink" data-game="memory-cascade" onclick="filterLB('memory-cascade',this)">MEMORY</button>
+      <button class="btn btn-sm btn-yellow" data-game="hangman" onclick="filterLB('hangman',this)">HANGMAN</button>
+      <button class="btn btn-sm btn-purple" data-game="hectoc" onclick="filterLB('hectoc',this)">HECTOC</button>
+    </div>
+    <div id="class-leaderboard"></div>
+  </div>
+
+  <div id="student-view" class="hidden">
+    <div class="classroom-header">
+      <div style="font-size:8px;color:var(--text-dim);letter-spacing:3px;margin-bottom:8px;">YOUR CLASSROOM</div>
+      <h1 id="student-class-title" class="neon-green" style="font-size:16px;margin-bottom:8px;"></h1>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:20px;margin-top:24px;">
+      <a href="../games/flash-anzan.html" class="game-launch-card pixel-box">
+        <span style="font-size:36px;">⚡</span>
+        <div><div class="neon-green" style="font-size:10px;margin-bottom:4px;">FLASH ANZAN</div>
+        <div class="vt323" style="font-size:17px;color:var(--text-dim);">Speed mental math</div></div>
+      </a>
+      <a href="../games/kenken.html" class="game-launch-card pixel-box cyan-box">
+        <span style="font-size:36px;">🧩</span>
+        <div><div class="neon-cyan" style="font-size:10px;margin-bottom:4px;">KENKEN</div>
+        <div class="vt323" style="font-size:17px;color:var(--text-dim);">Logic grid puzzle</div></div>
+      </a>
+      <a href="../games/memory-cascade.html" class="game-launch-card pixel-box pink-box">
+        <span style="font-size:36px;">🧠</span>
+        <div><div class="neon-pink" style="font-size:10px;margin-bottom:4px;">MEMORY CASCADE</div>
+        <div class="vt323" style="font-size:17px;color:var(--text-dim);">Track & recall numbers</div></div>
+      </a>
+      <a href="../games/hangman.html" class="game-launch-card pixel-box yellow-box">
+        <span style="font-size:36px;">🪄</span>
+        <div><div class="neon-yellow" style="font-size:10px;margin-bottom:4px;">NUMBER HANGMAN</div>
+        <div class="vt323" style="font-size:17px;color:var(--text-dim);">Solve or face the gallows</div></div>
+      </a>
+      <a href="../games/hectoc.html" class="game-launch-card pixel-box purple-box">
+        <span style="font-size:36px;">💯</span>
+        <div><div class="neon-purple" style="font-size:10px;margin-bottom:4px;">HECTOC</div>
+        <div class="vt323" style="font-size:17px;color:var(--text-dim);">Make 100 with 6 digits</div></div>
+      </a>
+    </div>
+    <hr class="pixel-divider"/>
+    <div style="font-size:9px;color:var(--neon-yellow);letter-spacing:3px;margin-bottom:16px;">YOUR SCORES</div>
+    <div id="student-scores"></div>
+  </div>
+
+  <!-- No Classroom -->
+  <div id="no-classroom" class="hidden text-center" style="padding:60px 20px;">
+    <div style="font-size:48px;margin-bottom:20px;">🏫</div>
+    <h2 class="neon-cyan" style="font-size:14px;margin-bottom:16px;">NO CLASSROOM FOUND</h2>
+    <p class="vt323" style="font-size:22px;color:var(--text-dim);margin-bottom:30px;">You're not in a classroom yet. Join one or create one!</p>
+    <a href="../index.html" class="btn btn-cyan">← HOME</a>
+  </div>
+</div>
+
+<script src="../js/core.js"></script>
+<script>
+  const session = MathArcade.Session.get();
+  const params = new URLSearchParams(window.location.search);
+  const urlClassId = params.get('id');
+  const urlCode = params.get('code');
+
+  // Handle join via URL
+  if (urlCode && session && session.role === 'student') {
+    const room = MathArcade.Classroom.join(urlCode, session.name);
+    if (room) { MathArcade.showNotif(`JOINED: ${room.name}!`, 'cyan'); MathArcade.Session.set({ classroomId: room.id }); }
+  }
+
+  const navExit = document.getElementById('nav-exit');
+  if (session) {
+    navExit.innerHTML = `<span style="color:var(--neon-yellow);font-size:7px">${session.name}</span>
+      <button class="btn btn-sm btn-pink" onclick="MathArcade.Session.logout();window.location.href='../index.html'">EXIT</button>`;
+  }
+
+  if (!session) {
+    document.getElementById('no-session').classList.remove('hidden');
+  } else {
+    const classId = urlClassId || session.classroomId;
+    const classroom = classId ? MathArcade.Classroom.getById(classId) : null;
+
+    if (!classroom) {
+      document.getElementById('no-classroom').classList.remove('hidden');
+    } else if (session.role === 'teacher') {
+      renderTeacherView(classroom);
+    } else {
+      renderStudentView(classroom);
+    }
+  }
+
+  function renderTeacherView(room) {
+    document.getElementById('teacher-view').classList.remove('hidden');
+    document.getElementById('class-title').textContent = room.name;
+    document.getElementById('class-meta').textContent = `TEACHER: ${room.teacherName} | CODE: ${room.code} | CREATED: ${new Date(room.createdAt).toLocaleDateString()}`;
+    document.getElementById('class-code-display').textContent = room.code;
+    document.getElementById('student-count').textContent = room.students.length;
+
+    // Students grid
+    const grid = document.getElementById('students-grid');
+    if (room.students.length === 0) {
+      grid.innerHTML = `<div class="vt323" style="font-size:20px;color:var(--text-dim);grid-column:1/-1;">No students yet. Share the code above!</div>`;
+    } else {
+      grid.innerHTML = room.students.map(s => `
+        <div class="student-card pixel-box">
+          <div class="student-avatar">🎮</div>
+          <div class="student-name">${s.name}</div>
+          <div class="student-role">STUDENT</div>
+        </div>`).join('');
+    }
+
+    // Launch games
+    const games = [
+      { id:'flash-anzan', name:'FLASH ANZAN', icon:'⚡', color:'green', href:'../games/flash-anzan.html' },
+      { id:'kenken', name:'KENKEN', icon:'🧩', color:'cyan', href:'../games/kenken.html' },
+      { id:'memory-cascade', name:'MEMORY CASCADE', icon:'🧠', color:'pink', href:'../games/memory-cascade.html' },
+      { id:'hangman', name:'NUMBER HANGMAN', icon:'🪄', color:'yellow', href:'../games/hangman.html' },
+      { id:'hectoc', name:'HECTOC', icon:'💯', color:'purple', href:'../games/hectoc.html' },
+    ];
+    document.getElementById('launch-games').innerHTML = games.map(g => `
+      <a href="${g.href}" class="game-launch-card pixel-box ${g.color === 'cyan' ? 'cyan-box' : g.color === 'pink' ? 'pink-box' : g.color === 'yellow' ? 'yellow-box' : g.color === 'purple' ? 'purple-box' : ''}">
+        <span style="font-size:32px;">${g.icon}</span>
+        <div>
+          <div class="neon-${g.color}" style="font-size:9px;margin-bottom:4px;">${g.name}</div>
+          <div class="vt323" style="color:var(--text-dim);font-size:18px;">Click to open & share with class</div>
+        </div>
+        <div style="margin-left:auto;" class="btn btn-sm btn-${g.color}">▶ OPEN</div>
+      </a>`).join('');
+
+    // Copy buttons
+    document.getElementById('btn-copy-code').addEventListener('click', () => MathArcade.copyToClipboard(room.code));
+    document.getElementById('btn-copy-link').addEventListener('click', () => {
+      const link = `${window.location.origin}${window.location.pathname}?code=${room.code}`;
+      MathArcade.copyToClipboard(link);
+    });
+
+    // Load leaderboard
+    filterLB('flash-anzan', document.querySelector('[data-game="flash-anzan"]'));
+  }
+
+  function renderStudentView(room) {
+    document.getElementById('student-view').classList.remove('hidden');
+    document.getElementById('student-class-title').textContent = room.name;
+    // Scores
+    const scores = MathArcade.Leaderboard.getForUser(session.id);
+    const lb = document.getElementById('student-scores');
+    if (!scores.length) {
+      lb.innerHTML = `<div class="vt323" style="font-size:22px;color:var(--text-dim);">No scores yet! Go play a game!</div>`;
+    } else {
+      lb.innerHTML = `<table class="leaderboard-table"><thead><tr><th>GAME</th><th>SCORE</th><th>TIME</th><th>DATE</th></tr></thead>
+        <tbody>${scores.map(s => `<tr><td class="neon-green">${s.gameId?.toUpperCase()}</td><td class="neon-yellow">${s.score}</td><td>${s.timeTaken ? MathArcade.formatTime(s.timeTaken) : '-'}</td><td>${new Date(s.timestamp).toLocaleDateString()}</td></tr>`).join('')}</tbody></table>`;
+    }
+  }
+
+  window.filterLB = function(gameId, btn) {
+    document.querySelectorAll('[data-game]').forEach(b => b.style.opacity = '0.5');
+    if (btn) btn.style.opacity = '1';
+    const session = MathArcade.Session.get();
+    const classId = session?.classroomId;
+    const entries = MathArcade.Leaderboard.getForGame(gameId, classId);
+    MathArcade.Leaderboard.renderTable(entries, document.getElementById('class-leaderboard'), ['rank','name','score','correct','time','date']);
+  };
+</script>
+</body>
+</html>

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Hectoc — MathArcade</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .hectoc-digits {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin: 20px 0;
+    }
+    .digit-box {
+      width: 64px; height: 64px;
+      border: 3px solid var(--neon-purple);
+      background: rgba(191,0,255,0.08);
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Varela Round', monospace;
+      font-size: 28px;
+      font-weight: 900;
+      color: var(--neon-purple);
+      text-shadow: 0 0 15px var(--neon-purple);
+      box-shadow: 0 0 15px rgba(191,0,255,0.3);
+      animation: digit-pulse 2s ease-in-out infinite;
+      position: relative;
+    }
+    .digit-box:nth-child(2) { animation-delay: 0.2s; }
+    .digit-box:nth-child(3) { animation-delay: 0.4s; }
+    .digit-box:nth-child(4) { animation-delay: 0.6s; }
+    .digit-box:nth-child(5) { animation-delay: 0.8s; }
+    .digit-box:nth-child(6) { animation-delay: 1s; }
+    @keyframes digit-pulse {
+      0%,100%{box-shadow:0 0 15px rgba(191,0,255,0.3);}
+      50%{box-shadow:0 0 30px rgba(191,0,255,0.6);}
+    }
+    .digit-sep {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 10px;
+      color: var(--text-dim);
+    }
+    .expr-input {
+      font-family: 'Varela Round', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      background: rgba(191,0,255,0.05);
+      border: 2px solid var(--neon-purple);
+      color: var(--neon-purple);
+      padding: 14px 16px;
+      outline: none;
+      width: 100%;
+      text-align: center;
+      letter-spacing: 3px;
+      box-shadow: 0 0 15px rgba(191,0,255,0.2);
+      transition: all 0.2s;
+    }
+    .expr-input:focus { box-shadow: 0 0 30px rgba(191,0,255,0.5); }
+    .expr-input::placeholder { color: rgba(191,0,255,0.3); font-size: 14px; }
+    .eval-display {
+      font-family: 'Varela Round', monospace;
+      font-size: 32px;
+      font-weight: 900;
+      text-align: center;
+      min-height: 50px;
+      transition: all 0.3s;
+    }
+    .eval-ok { color: var(--neon-green); text-shadow: 0 0 20px var(--neon-green); }
+    .eval-close { color: var(--neon-yellow); }
+    .eval-bad { color: var(--neon-pink); }
+
+    /* OP Buttons */
+    .op-buttons { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin: 10px 0; }
+    .op-btn {
+      font-family: 'Press Start 2P', monospace;
+      font-size: 14px;
+      padding: 10px 16px;
+      background: rgba(191,0,255,0.08);
+      border: 2px solid var(--neon-purple);
+      color: var(--neon-purple);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .op-btn:hover { background: rgba(191,0,255,0.2); transform: scale(1.1); }
+
+    /* Live leaderboard */
+    .live-lb { max-height: 320px; overflow-y: auto; }
+    .live-entry {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      border-bottom: 1px solid rgba(191,0,255,0.15);
+      transition: all 0.3s;
+    }
+    .live-entry:hover { background: rgba(191,0,255,0.08); }
+    .live-rank { font-size: 14px; width: 30px; }
+    .live-name { flex: 1; font-family: 'VT323', monospace; font-size: 18px; }
+    .live-time { font-family: 'VT323', monospace; font-size: 18px; color: var(--neon-yellow); }
+    .live-solves { font-family: 'VT323', monospace; font-size: 18px; color: var(--neon-green); }
+
+    .puzzle-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      font-size: 8px;
+      border: 1px solid;
+    }
+
+    /* Multiplayer panel */
+    .mp-panel {
+      background: rgba(191,0,255,0.05);
+      border: 2px solid rgba(191,0,255,0.3);
+      padding: 16px;
+      margin-top: 16px;
+    }
+
+    /* Solution display */
+    .solution-chip {
+      display: inline-block;
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      padding: 4px 12px;
+      border: 1px solid var(--neon-green);
+      color: var(--neon-green);
+      margin: 4px;
+    }
+
+    .digit-used { opacity: 0.4; }
+    .hint-item { font-family: 'VT323', monospace; font-size: 19px; color: var(--text-dim); line-height: 1.6; }
+  </style>
+</head>
+<body>
+<div class="crt-corner tl"></div><div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div><div class="crt-corner br"></div>
+
+<nav class="navbar">
+  <div class="navbar-brand"><span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span></div>
+  <ul class="navbar-nav">
+    <li><a href="../index.html">← HOME</a></li>
+    <li><span class="neon-purple" style="font-size:9px;">💯 HECTOC</span></li>
+    <li id="nav-user"></li>
+  </ul>
+</nav>
+
+<div class="game-hud" id="hud" style="display:none;">
+  <div class="hud-item"><div class="hud-label">PUZZLE</div><div class="hud-value neon-purple" id="hud-puzzle">-</div></div>
+  <div class="hud-item"><div class="hud-label">SOLVED</div><div class="hud-value neon-green" id="hud-solved">0</div></div>
+  <div class="hud-item"><div class="hud-label">TIME</div><div class="hud-value neon-yellow" id="hud-time">0s</div></div>
+  <div class="hud-item"><div class="hud-label">SCORE</div><div class="hud-value neon-cyan" id="hud-score">0</div></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="screen-settings" style="max-width:680px;margin:40px auto;padding:20px;">
+  <div class="pixel-box purple-box" style="padding:32px;">
+    <h1 class="neon-purple text-center" style="font-size:16px;margin-bottom:8px;">💯 HECTOC</h1>
+    <p class="vt323 text-center" style="font-size:22px;color:var(--text-dim);margin-bottom:24px;">
+      Use 6 digits IN ORDER with +, -, ×, ÷, ^ and parentheses to make exactly 100!
+    </p>
+
+    <div class="pixel-box" style="padding:16px;margin-bottom:24px;border-color:rgba(191,0,255,0.3);">
+      <div class="hint-item">
+        <span class="neon-purple">EXAMPLE:</span> Puzzle <span class="neon-yellow">1 2 3 4 5 6</span><br/>
+        → <span class="neon-green">1 × 2 × (34 + 16) = 100</span> ✓<br/>
+        → You must use all 6 digits in their original order<br/>
+        → You can concatenate adjacent digits (e.g., 1 and 2 → 12)<br/>
+        → Operations: + − × ÷ ^ and ( )
+      </div>
+    </div>
+
+    <div class="settings-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div class="form-group">
+        <label>GAME MODE</label>
+        <select class="pixel-input" id="mode-select" style="border-color:var(--neon-purple);color:var(--neon-purple);">
+          <option value="solo">🎮 SOLO — Race the clock</option>
+          <option value="multi">👥 MULTIPLAYER — Compete live</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>PUZZLES</label>
+        <select class="pixel-input" id="puzzles-select" style="border-color:var(--neon-purple);color:var(--neon-purple);">
+          <option value="3">3 PUZZLES</option>
+          <option value="5" selected>5 PUZZLES</option>
+          <option value="10">10 PUZZLES</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Multiplayer room setup -->
+    <div id="mp-setup" class="hidden mp-panel">
+      <div style="font-size:8px;color:var(--neon-purple);letter-spacing:3px;margin-bottom:12px;">MULTIPLAYER ROOM</div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>ROOM CODE</label>
+          <input class="pixel-input" id="mp-room-code" placeholder="ENTER ROOM CODE" style="border-color:var(--neon-purple);color:var(--neon-purple);text-transform:uppercase;letter-spacing:4px;"/>
+        </div>
+        <div class="form-group" style="display:flex;align-items:flex-end;">
+          <button class="btn btn-purple" id="btn-create-room">CREATE ROOM</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-center mt-20">
+      <button class="btn btn-purple btn-lg" id="btn-start">▶ START HECTOC</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="hidden" style="max-width:900px;margin:20px auto;padding:20px;">
+  <div style="display:grid;grid-template-columns:1fr auto;gap:20px;align-items:start;">
+
+    <!-- Main puzzle area -->
+    <div class="pixel-box purple-box" style="padding:24px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+        <div>
+          <div style="font-size:7px;color:var(--text-dim);letter-spacing:3px;">PUZZLE <span id="puzzle-num">1</span> OF <span id="puzzle-total">5</span></div>
+          <div style="font-size:8px;color:var(--neon-purple);margin-top:4px;">USE ALL 6 DIGITS IN ORDER → MAKE 100</div>
+        </div>
+        <button class="btn btn-sm btn-purple" id="btn-skip">SKIP →</button>
+      </div>
+
+      <!-- Digit display -->
+      <div class="hectoc-digits" id="hectoc-digits"></div>
+
+      <!-- Expression input -->
+      <div style="margin:16px 0;">
+        <input class="expr-input" type="text" id="expr-input" placeholder="e.g.  1 2 × (3 4 + 1 6)" autocomplete="off" spellcheck="false"/>
+      </div>
+
+      <!-- Quick op buttons -->
+      <div class="op-buttons">
+        <button class="op-btn" onclick="insertOp('+')">+</button>
+        <button class="op-btn" onclick="insertOp('-')">−</button>
+        <button class="op-btn" onclick="insertOp('*')">×</button>
+        <button class="op-btn" onclick="insertOp('/')">÷</button>
+        <button class="op-btn" onclick="insertOp('^')">^</button>
+        <button class="op-btn" onclick="insertOp('(')"> ( </button>
+        <button class="op-btn" onclick="insertOp(')')"> ) </button>
+        <button class="op-btn" style="border-color:var(--neon-pink);color:var(--neon-pink);" onclick="clearExpr()">CLR</button>
+      </div>
+
+      <!-- Live evaluation -->
+      <div class="eval-display" id="eval-display" style="min-height:50px;margin:12px 0;"></div>
+
+      <!-- Validation feedback -->
+      <div id="expr-feedback" class="vt323" style="font-size:20px;min-height:28px;text-align:center;color:var(--text-dim);"></div>
+
+      <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;">
+        <button class="btn btn-purple btn-lg" id="btn-submit">✓ SUBMIT</button>
+        <button class="btn btn-sm" style="color:var(--text-dim);border-color:var(--text-dim);" id="btn-hint-toggle">💡 HINT</button>
+      </div>
+
+      <div id="hint-panel" class="hidden" style="margin-top:16px;padding:12px;background:rgba(0,0,0,0.5);border:1px dashed rgba(191,0,255,0.3);">
+        <div style="font-size:7px;color:var(--neon-yellow);letter-spacing:2px;margin-bottom:8px;">STRATEGY HINTS</div>
+        <div class="hint-item" id="hint-text"></div>
+      </div>
+    </div>
+
+    <!-- Right sidebar: Live Leaderboard -->
+    <div style="width:240px;" id="sidebar">
+      <div class="pixel-box purple-box" style="padding:16px;margin-bottom:14px;">
+        <div style="font-size:7px;color:var(--neon-purple);letter-spacing:3px;margin-bottom:12px;">🏆 LIVE BOARD</div>
+        <div class="live-lb" id="live-lb"></div>
+      </div>
+      <div class="pixel-box" style="padding:16px;border-color:rgba(191,0,255,0.3);">
+        <div style="font-size:7px;color:var(--text-dim);letter-spacing:2px;margin-bottom:8px;">SOLVED THIS SESSION</div>
+        <div id="solved-list" class="vt323" style="font-size:17px;color:var(--text-dim);">None yet</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- RESULTS SCREEN -->
+<div id="screen-results" class="hidden" style="max-width:700px;margin:30px auto;padding:20px;text-align:center;">
+  <div class="pixel-box purple-box" style="padding:32px;">
+    <div style="font-size:64px;margin-bottom:16px;">🏆</div>
+    <div class="neon-purple" style="font-size:16px;margin-bottom:20px;">SESSION COMPLETE!</div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:24px;">
+      <div class="pixel-box" style="padding:14px;"><div style="font-size:7px;color:var(--text-dim)">SCORE</div><div id="res-score" class="neon-green" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:14px;"><div style="font-size:7px;color:var(--text-dim)">SOLVED</div><div id="res-solved" class="neon-purple" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:14px;"><div style="font-size:7px;color:var(--text-dim)">TIME</div><div id="res-time" class="neon-yellow" style="font-size:20px;font-family:'Varela Round',monospace;"></div></div>
+    </div>
+
+    <div style="font-size:8px;color:var(--text-dim);margin-bottom:12px;letter-spacing:2px;">YOUR SOLUTIONS</div>
+    <div id="res-solutions" style="margin-bottom:24px;"></div>
+
+    <div style="font-size:8px;color:var(--neon-purple);margin-bottom:12px;letter-spacing:2px;">FINAL LEADERBOARD</div>
+    <div id="res-lb" style="margin-bottom:24px;"></div>
+
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-purple" id="btn-again">▶ PLAY AGAIN</button>
+      <a href="../pages/leaderboard.html" class="btn btn-cyan">🏆 HALL OF FAME</a>
+      <a href="../index.html" class="btn btn-green">← HOME</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/core.js"></script>
+<script>
+  const { randomInt, showNotif, Leaderboard, Session, formatTime } = MathArcade;
+  const sesh = Session.get();
+  document.getElementById('nav-user').innerHTML = sesh ?
+    `<span style="color:var(--neon-yellow);font-size:7px">${sesh.name}</span>` : '';
+
+  let puzzles = [];
+  let currentPuzzleIdx = 0;
+  let totalPuzzles = 5;
+  let solvedCount = 0;
+  let totalScore = 0;
+  let gameStartTime = 0;
+  let timerInterval = null;
+  let solutions = []; // {puzzle, expr, time, solved, correctExpr}
+  let multiEntries = []; // simulated multiplayer entries
+  let incorrectAttempts = 0;
+
+  // MP mode toggle
+  document.getElementById('mode-select').addEventListener('change', e => {
+    document.getElementById('mp-setup').classList.toggle('hidden', e.target.value !== 'multi');
+  });
+
+  document.getElementById('btn-create-room').addEventListener('click', () => {
+    const code = Math.random().toString(36).substr(2, 6).toUpperCase();
+    document.getElementById('mp-room-code').value = code;
+    showNotif(`ROOM CREATED: ${code}`, 'purple');
+  });
+
+  document.getElementById('btn-start').addEventListener('click', startGame);
+  document.getElementById('btn-submit').addEventListener('click', submitExpression);
+  document.getElementById('btn-skip').addEventListener('click', skipPuzzle);
+  document.getElementById('btn-again').addEventListener('click', () => {
+    document.getElementById('screen-results').classList.add('hidden');
+    document.getElementById('screen-settings').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+  });
+  document.getElementById('btn-hint-toggle').addEventListener('click', () => {
+    const panel = document.getElementById('hint-panel');
+    panel.classList.toggle('hidden');
+    if (!panel.classList.contains('hidden')) showHint();
+  });
+
+  const exprInput = document.getElementById('expr-input');
+  exprInput.addEventListener('input', liveEval);
+  exprInput.addEventListener('keydown', e => { if (e.key === 'Enter') submitExpression(); });
+
+  window.insertOp = function(op) {
+    if (MathArcade.Audio) MathArcade.Audio.playBlip();
+    const start = exprInput.selectionStart;
+    const end = exprInput.selectionEnd;
+    const val = exprInput.value;
+    const opStr = op === '*' ? '*' : op === '/' ? '/' : op;
+    exprInput.value = val.slice(0, start) + opStr + val.slice(end);
+    exprInput.selectionStart = exprInput.selectionEnd = start + opStr.length;
+    exprInput.focus();
+    liveEval();
+  };
+
+  window.clearExpr = function() {
+    exprInput.value = '';
+    document.getElementById('eval-display').textContent = '';
+    document.getElementById('expr-feedback').textContent = '';
+    exprInput.focus();
+  };
+
+  // ---- PUZZLE GENERATION ----
+  const KNOWN_SOLVABLE_WITH_ANSWERS = [
+    {d: [1, 2, 3, 4, 6, 7], a: "1-2+34+67"}, {d: [1, 2, 3, 5, 6, 7], a: "1+2+3×5×6+7"},
+    {d: [1, 2, 3, 5, 7, 8], a: "1+2+3×5×7-8"}, {d: [1, 2, 4, 5, 7, 8], a: "1-2+45+7×8"},
+    {d: [1, 3, 4, 5, 6, 7], a: "13+4×5+67"}, {d: [2, 3, 4, 5, 6, 7], a: "23×4+56÷7"},
+    {d: [1, 2, 4, 6, 7, 8], a: "1+24+67+8"}, {d: [1, 3, 4, 5, 7, 8], a: "1+34+57+8"},
+    {d: [2, 3, 4, 5, 7, 8], a: "2-3+45+7×8"}, {d: [1, 2, 5, 6, 7, 8], a: "1×25+67+8"},
+    {d: [1, 3, 4, 6, 7, 8], a: "1-3+4×6+78"}, {d: [1, 4, 5, 6, 7, 8], a: "14+5×6+7×8"},
+    {d: [2, 3, 5, 6, 7, 8], a: "23+5-6+78"}, {d: [3, 5, 7, 9, 2, 4], a: "3×5+79+2+4"},
+    {d: [1, 5, 9, 2, 6, 3], a: "1+5+92+6÷3"}, {d: [8, 7, 6, 5, 4, 3], a: "8+76×5÷4-3"},
+    {d: [9, 8, 7, 6, 5, 4], a: "98+7-6+5-4"}, {d: [5, 5, 5, 5, 5, 5], a: "55+55-5-5"},
+    {d: [1, 1, 1, 1, 1, 1], a: "1×111-11"}, {d: [9, 1, 2, 3, 4, 5], a: "91+2+3×4-5"},
+    {d: [8, 1, 2, 3, 4, 5], a: "8×12+3-4+5"}, {d: [7, 1, 2, 3, 4, 5], a: "71+2×3×4+5"},
+    {d: [6, 1, 2, 3, 4, 5], a: "61-2×3+45"}
+  ];
+
+  function generatePuzzle() {
+    const item = KNOWN_SOLVABLE_WITH_ANSWERS[randomInt(0, KNOWN_SOLVABLE_WITH_ANSWERS.length - 1)];
+    return { digits: [...item.d], answer: item.a };
+  }
+
+  function startGame() {
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
+    totalPuzzles = parseInt(document.getElementById('puzzles-select').value);
+    puzzles = Array.from({length: totalPuzzles}, () => generatePuzzle());
+    currentPuzzleIdx = 0; solvedCount = 0; totalScore = 0; solutions = [];
+    gameStartTime = Date.now();
+    multiEntries = generateFakeMultiplayer();
+
+    document.getElementById('screen-settings').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'flex';
+
+    startTimer();
+    loadPuzzle();
+    renderLiveLeaderboard();
+  }
+
+  function generateFakeMultiplayer() {
+    // Simulate up to 4 other players for multiplayer feel
+    const names = ['ALEX_PRO','MATHWIZ','NUMBR8R','CALCKING','SPEEDRUN','BRAINIAC'];
+    const sel = names.sort(() => Math.random() - 0.5).slice(0, 3);
+    return sel.map(name => ({ name, solved: 0, score: 0, time: '-' }));
+  }
+
+  function loadPuzzle() {
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    const digits = puzzleObj.digits;
+    incorrectAttempts = 0;
+    document.getElementById('puzzle-num').textContent = currentPuzzleIdx + 1;
+    document.getElementById('puzzle-total').textContent = totalPuzzles;
+    document.getElementById('hud-puzzle').textContent = digits.join('');
+
+    // Render digit boxes
+    const wrap = document.getElementById('hectoc-digits');
+    wrap.innerHTML = digits.map((d, i) =>
+      `<div class="digit-box" id="dbox-${i}">${d}</div>`
+    ).join('');
+
+    clearExpr();
+    document.getElementById('hint-panel').classList.add('hidden');
+    document.getElementById('expr-feedback').textContent = '';
+    document.getElementById('eval-display').textContent = '';
+    exprInput.focus();
+  }
+
+  function skipPuzzle() {
+    showNotif('PUZZLE SKIPPED!', 'purple');
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    solutions.push({ puzzle: puzzleObj.digits.join(''), expr: 'SKIPPED', solved: false, correctExpr: puzzleObj.answer, time: Date.now() - gameStartTime });
+    currentPuzzleIdx++;
+    if (currentPuzzleIdx >= totalPuzzles) { endGame(); return; }
+    loadPuzzle();
+    // Simulate fake players solving
+    simulateFakeProgress();
+  }
+
+  function liveEval() {
+    const raw = exprInput.value.trim();
+    const evalEl = document.getElementById('eval-display');
+    const feedbackEl = document.getElementById('expr-feedback');
+    if (!raw) { evalEl.textContent = ''; feedbackEl.textContent = ''; return; }
+    try {
+      const result = safeEval(raw);
+      if (typeof result !== 'number' || isNaN(result) || !isFinite(result)) {
+        evalEl.textContent = '?';
+        evalEl.className = 'eval-display eval-bad';
+        return;
+      }
+      evalEl.textContent = '= ' + result;
+      if (result === 100) {
+        evalEl.className = 'eval-display eval-ok';
+        feedbackEl.textContent = '🎯 PRESS SUBMIT TO CONFIRM!';
+        feedbackEl.style.color = 'var(--neon-green)';
+      } else {
+        const diff = Math.abs(result - 100);
+        evalEl.className = 'eval-display ' + (diff < 10 ? 'eval-close' : 'eval-bad');
+        feedbackEl.textContent = result < 100 ? `${diff} TOO LOW` : `${diff} TOO HIGH`;
+        feedbackEl.style.color = 'var(--text-dim)';
+      }
+    } catch {
+      evalEl.textContent = '';
+      feedbackEl.textContent = '';
+    }
+  }
+
+  function handleIncorrectAttempt(rawExpr) {
+    incorrectAttempts++;
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    if (incorrectAttempts >= 3) {
+      showNotif(`TOO MANY TRIES! ANSWER WAS ${puzzleObj.answer}`, 'pink');
+      solutions.push({ puzzle: puzzleObj.digits.join(''), expr: rawExpr, solved: false, correctExpr: puzzleObj.answer, time: Date.now() - gameStartTime });
+      setTimeout(() => {
+        currentPuzzleIdx++;
+        if (currentPuzzleIdx >= totalPuzzles) endGame();
+        else loadPuzzle();
+      }, 1500);
+    }
+  }
+
+  function submitExpression() {
+    if (incorrectAttempts >= 3) return; // ignore submits if already failed
+    const raw = exprInput.value.trim();
+    if (!raw) { showNotif('ENTER AN EXPRESSION!', 'purple'); return; }
+
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    const digits = puzzleObj.digits;
+    const validation = validateExpression(raw, digits);
+    const feedbackEl = document.getElementById('expr-feedback');
+
+    if (!validation.valid) {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      feedbackEl.textContent = '✗ ' + validation.reason;
+      feedbackEl.style.color = 'var(--neon-pink)';
+      showNotif(validation.reason, 'pink');
+      handleIncorrectAttempt(raw);
+      return;
+    }
+
+    let result;
+    try { 
+      result = safeEval(raw); 
+    } catch { 
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      showNotif('INVALID EXPRESSION!', 'pink'); 
+      handleIncorrectAttempt(raw);
+      return; 
+    }
+
+    if (Math.abs(result - 100) < 0.0001) {
+      // Correct!
+      const puzzleTime = Date.now() - gameStartTime;
+      const pts = Math.max(100, 1000 - Math.floor(puzzleTime / 1000) * 5);
+      totalScore += pts;
+      solvedCount++;
+      solutions.push({ puzzle: digits.join(''), expr: raw, solved: true, correctExpr: puzzleObj.answer, time: puzzleTime });
+      document.getElementById('hud-solved').textContent = solvedCount;
+      document.getElementById('hud-score').textContent = totalScore;
+
+      // Render solved
+      const solvedDiv = document.getElementById('solved-list');
+      solvedDiv.innerHTML = solutions.map(s =>
+        `<div style="margin-bottom:6px"><span class="neon-yellow">${s.puzzle}</span>: <span class="neon-green">${s.expr}</span></div>`
+      ).join('');
+
+      showNotif(`✓ BLAZING! +${pts} PTS`, 'green');
+      if (MathArcade.Audio) MathArcade.Audio.playCorrect();
+      feedbackEl.textContent = '✓ CORRECT! = 100';
+      feedbackEl.style.color = 'var(--neon-green)';
+
+      simulateFakeProgress();
+      renderLiveLeaderboard();
+
+      setTimeout(() => {
+        currentPuzzleIdx++;
+        if (currentPuzzleIdx >= totalPuzzles) endGame();
+        else loadPuzzle();
+      }, 1200);
+    } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      feedbackEl.textContent = `✗ RESULT IS ${result}, NOT 100`;
+      feedbackEl.style.color = 'var(--neon-pink)';
+      showNotif(`NOT 100! GOT ${result}`, 'pink');
+      handleIncorrectAttempt(raw);
+    }
+  }
+
+  function validateExpression(expr, digits) {
+    // Extract all digits from expression (ignoring operators and parens)
+    const usedDigits = expr.replace(/[^0-9]/g, '').split('').map(Number);
+    // Check order match
+    if (usedDigits.join('') !== digits.join('')) {
+      return { valid: false, reason: `DIGITS MUST BE ${digits.join(' ')} IN ORDER!` };
+    }
+    return { valid: true };
+  }
+
+  function safeEval(expr) {
+    // Replace × → * and ÷ → / and ^ → **
+    const clean = expr
+      .replace(/×/g, '*').replace(/÷/g, '/')
+      .replace(/\^/g, '**')
+      .replace(/[^0-9+\-*\/().\s*\*]/g, '');
+    // Use Function constructor for safe evaluation
+    return Function('"use strict"; return (' + clean + ')')();
+  }
+
+  function showHint() {
+    const puzzleObj = puzzles[currentPuzzleIdx];
+    const digits = puzzleObj.digits;
+    const hints = [
+      `Try concatenating adjacent digits: e.g., ${digits[0]}${digits[1]} or ${digits[2]}${digits[3]}`,
+      `Work towards 100: think (a×b) + c or (a+b) × c`,
+      `Powers can help: ${digits[0]}^2 = ${digits[0]**2}`,
+      `Try grouping last digits: ...× (${digits[4]}${digits[5]}) or ...(${digits[3]}+${digits[4]}+${digits[5]})`,
+      `Target 100: think of factors of 100: 4×25, 5×20, 10×10, 2×50`,
+    ];
+    document.getElementById('hint-text').innerHTML = hints.map(h =>
+      `• ${h}<br/>`).join('');
+  }
+
+  function simulateFakeProgress() {
+    // Advance fake players slightly
+    multiEntries.forEach(p => {
+      if (Math.random() > 0.5) {
+        p.solved = Math.min(p.solved + 1, totalPuzzles);
+        p.score += randomInt(50, 200);
+        p.time = randomInt(10, 120) + 's';
+      }
+    });
+    renderLiveLeaderboard();
+  }
+
+  function renderLiveLeaderboard() {
+    const me = { name: (sesh?.name || 'YOU'), solved: solvedCount, score: totalScore, time: ((Date.now()-gameStartTime)/1000).toFixed(0) + 's', isMe: true };
+    const all = [...multiEntries, me].sort((a,b) => b.score - a.score || b.solved - a.solved);
+    const lb = document.getElementById('live-lb');
+    lb.innerHTML = all.map((p, i) => {
+      const rank = ['🥇','🥈','🥉'][i] || `${i+1}.`;
+      return `<div class="live-entry" style="${p.isMe ? 'background:rgba(191,0,255,0.1);border-left:2px solid var(--neon-purple);' : ''}">
+        <div class="live-rank">${rank}</div>
+        <div class="live-name" style="${p.isMe ? 'color:var(--neon-purple)' : ''}">${p.name}</div>
+        <div class="live-solves">${p.solved}✓</div>
+        <div class="live-time">${p.time}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function startTimer() {
+    timerInterval = setInterval(() => {
+      const el = document.getElementById('hud-time');
+      if (el) el.textContent = ((Date.now()-gameStartTime)/1000).toFixed(0) + 's';
+    }, 1000);
+  }
+
+  function endGame() {
+    if (timerInterval) clearInterval(timerInterval);
+    document.getElementById('screen-game').classList.add('hidden');
+    document.getElementById('screen-results').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'none';
+    
+    if (MathArcade.Audio) {
+      if (solvedCount > 0) MathArcade.Audio.playWin();
+      else setTimeout(() => MathArcade.Audio.playWrong(), 200);
+    }
+
+    const timeMs = Date.now() - gameStartTime;
+    document.getElementById('res-score').textContent = totalScore;
+    document.getElementById('res-solved').textContent = `${solvedCount}/${totalPuzzles}`;
+    document.getElementById('res-time').textContent = (timeMs/1000).toFixed(1) + 's';
+
+    // Solutions display
+    document.getElementById('res-solutions').style.display = 'flex';
+    document.getElementById('res-solutions').style.flexDirection = 'column';
+    document.getElementById('res-solutions').style.gap = '8px';
+    document.getElementById('res-solutions').style.alignItems = 'center';
+
+    document.getElementById('res-solutions').innerHTML = solutions.length
+      ? solutions.map(s => {
+          if (s.solved) {
+            return `<div class="solution-chip" style="display:block;width:100%;max-width:400px;text-align:center;">📌 ${s.puzzle} → ${s.expr} <span class="neon-green">(✓)</span></div>`;
+          } else {
+            return `<div class="solution-chip" style="display:block;border-color:var(--neon-pink);color:var(--text-dim);width:100%;max-width:400px;text-align:center;">📌 ${s.puzzle} → ${s.expr} <span class="neon-pink">(✗)</span><br><span style="font-size:14px;color:var(--neon-green)">Answer: ${s.correctExpr} = 100</span></div>`;
+          }
+        }).join('')
+      : '<div class="vt323" style="font-size:20px;color:var(--text-dim)">No puzzles attempted — keep practicing!</div>';
+
+    Leaderboard.submit('hectoc', totalScore, { correct: solvedCount, total: totalPuzzles, timeTaken: timeMs });
+
+    // Final leaderboard incl fake players
+    const me = { name: sesh?.name || 'YOU', solved: solvedCount, score: totalScore };
+    const all = [...multiEntries, me].sort((a,b) => b.score - a.score);
+    const lb = document.getElementById('res-lb');
+    lb.innerHTML = `<table class="leaderboard-table"><thead><tr><th>RANK</th><th>PLAYER</th><th>SOLVED</th><th>SCORE</th></tr></thead>
+      <tbody>${all.map((p,i) => `<tr class="${i<3?'rank-'+(i+1):''}">
+        <td>${['🥇','🥈','🥉'][i]||'#'+(i+1)}</td>
+        <td class="neon-purple">${p.name}</td>
+        <td class="neon-green">${p.solved}</td>
+        <td class="neon-yellow">${p.score}</td>
+      </tr>`).join('')}</tbody></table>`;
+  }
+</script>
+</body>
+</html>

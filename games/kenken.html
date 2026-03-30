@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>KenKen — MathArcade</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .kenken-grid {
+      display: inline-grid;
+      border: 3px solid var(--neon-cyan);
+      box-shadow: 0 0 20px rgba(0,245,255,0.4);
+      background: var(--darker-bg);
+      margin: 0 auto;
+    }
+    .kenken-cell {
+      width: 72px; height: 72px;
+      border: 1px solid rgba(0,245,255,0.25);
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .kenken-cell:hover { background: rgba(0,245,255,0.08); }
+    .kenken-cell.selected { background: rgba(0,245,255,0.18); border-color: var(--neon-cyan); }
+    .kenken-cell.correct { background: rgba(0,255,65,0.12); }
+    .kenken-cell.wrong { background: rgba(255,0,110,0.12); }
+    .kenken-cell .cell-value {
+      font-family: 'Varela Round', monospace;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--neon-cyan);
+    }
+    .kenken-cell .cage-label {
+      position: absolute;
+      top: 3px; left: 4px;
+      font-size: 8px;
+      font-family: 'Press Start 2P', monospace;
+      color: var(--neon-yellow);
+      text-shadow: 0 0 6px var(--neon-yellow);
+      pointer-events: none;
+      line-height: 1;
+    }
+    .cage-border-top { border-top: 3px solid var(--neon-yellow) !important; }
+    .cage-border-bottom { border-bottom: 3px solid var(--neon-yellow) !important; }
+    .cage-border-left { border-left: 3px solid var(--neon-yellow) !important; }
+    .cage-border-right { border-right: 3px solid var(--neon-yellow) !important; }
+
+    .numpad {
+      display: grid;
+      gap: 8px;
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    .numpad-btn {
+      font-family: 'Varela Round', monospace;
+      font-size: 18px;
+      font-weight: 700;
+      background: rgba(0,0,0,0.6);
+      border: 2px solid var(--neon-cyan);
+      color: var(--neon-cyan);
+      padding: 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-shadow: 0 0 8px var(--neon-cyan);
+    }
+    .numpad-btn:hover { background: rgba(0,245,255,0.15); transform: scale(1.05); }
+    .numpad-btn.clear-btn { border-color: var(--neon-pink); color: var(--neon-pink); }
+    .diff-btn.active { background: rgba(0,245,255,0.2); }
+    #kenken-wrap { text-align:center; }
+    .cage-highlight { background: rgba(255,230,0,0.07) !important; }
+  </style>
+</head>
+<body>
+<div class="crt-corner tl"></div><div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div><div class="crt-corner br"></div>
+
+<nav class="navbar">
+  <div class="navbar-brand"><span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span></div>
+  <ul class="navbar-nav">
+    <li><a href="../index.html">← HOME</a></li>
+    <li><span class="neon-cyan" style="font-size:9px;">🧩 KENKEN</span></li>
+    <li id="nav-user"></li>
+  </ul>
+</nav>
+
+<div class="game-hud" id="hud" style="display:none;">
+  <div class="hud-item"><div class="hud-label">SIZE</div><div class="hud-value neon-cyan" id="hud-size">4×4</div></div>
+  <div class="hud-item"><div class="hud-label">ERRORS</div><div class="hud-value neon-pink" id="hud-errors">0</div></div>
+  <div class="hud-item"><div class="hud-label">TIME</div><div class="hud-value neon-yellow" id="hud-time">0s</div></div>
+  <div class="hud-item"><div class="hud-label">FILLED</div><div class="hud-value neon-green" id="hud-filled">0%</div></div>
+</div>
+
+<!-- SETTINGS -->
+<div id="screen-settings" style="max-width:600px;margin:40px auto;padding:20px;">
+  <div class="pixel-box cyan-box" style="padding:32px;">
+    <h1 class="neon-cyan text-center" style="font-size:18px;margin-bottom:8px;">🧩 KENKEN</h1>
+    <p class="vt323 text-center" style="font-size:22px;color:var(--text-dim);margin-bottom:30px;">
+      Fill the grid — each row & column uses 1–N once. Cages must satisfy their target!
+    </p>
+    <div class="form-group">
+      <label>GRID SIZE</label>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-cyan diff-btn active" data-size="3" onclick="selectSize(3,this)">3×3</button>
+        <button class="btn diff-btn" data-size="4" onclick="selectSize(4,this)" style="color:var(--text-dim);border-color:var(--text-dim);">4×4</button>
+        <button class="btn diff-btn" data-size="5" onclick="selectSize(5,this)" style="color:var(--text-dim);border-color:var(--text-dim);">5×5</button>
+        <button class="btn diff-btn" data-size="6" onclick="selectSize(6,this)" style="color:var(--text-dim);border-color:var(--text-dim);">6×6</button>
+      </div>
+    </div>
+    <div class="text-center mt-30">
+      <button class="btn btn-cyan btn-lg" id="btn-start">▶ START PUZZLE</button>
+    </div>
+  </div>
+  <div class="pixel-box cyan-box" style="padding:20px;margin-top:20px;">
+    <div style="font-size:8px;color:var(--neon-cyan);margin-bottom:12px;letter-spacing:2px;">HOW TO PLAY</div>
+    <div class="vt323" style="font-size:18px;color:var(--text-dim);line-height:1.6;">
+      • Each row and column must contain the digits 1 to N exactly once<br/>
+      • The small number in each cage corner is the target<br/>
+      • The operation (+, -, ×, ÷) must produce the target using all cage numbers<br/>
+      • Single-cell cages are directly that number
+    </div>
+  </div>
+</div>
+
+<!-- GAME SCREEN -->
+<div id="screen-game" class="hidden" style="padding:20px;text-align:center;">
+  <div id="kenken-wrap">
+    <div class="kenken-grid" id="kenken-grid"></div>
+  </div>
+  <div class="numpad" id="numpad" style="grid-template-columns:repeat(5,1fr);"></div>
+  <div style="display:flex;gap:12px;justify-content:center;margin-top:16px;flex-wrap:wrap;">
+    <button class="btn btn-cyan" id="btn-check">✓ CHECK</button>
+    <button class="btn btn-yellow" id="btn-hint">💡 HINT</button>
+    <button class="btn btn-pink" id="btn-new">↺ NEW PUZZLE</button>
+  </div>
+</div>
+
+<!-- WIN SCREEN -->
+<div id="screen-win" class="hidden" style="max-width:500px;margin:40px auto;padding:20px;text-align:center;">
+  <div class="pixel-box cyan-box" style="padding:32px;">
+    <div style="font-size:64px;margin-bottom:16px;">🏆</div>
+    <div class="neon-cyan" style="font-size:18px;margin-bottom:16px;">PUZZLE SOLVED!</div>
+    <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin:20px 0;">
+      <div class="pixel-box" style="padding:14px;"><div style="font-size:7px;color:var(--text-dim);">TIME</div><div id="win-time" class="neon-yellow" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+      <div class="pixel-box" style="padding:14px;"><div style="font-size:7px;color:var(--text-dim);">ERRORS</div><div id="win-errors" class="neon-pink" style="font-size:22px;font-family:'Varela Round',monospace;"></div></div>
+    </div>
+    <div id="win-score-disp" class="neon-green" style="font-size:28px;font-family:'Varela Round',monospace;margin:10px 0;"></div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:20px;">
+      <button class="btn btn-cyan" id="btn-win-new">▶ NEW PUZZLE</button>
+      <a href="../pages/leaderboard.html" class="btn btn-yellow">🏆 LEADERBOARD</a>
+    </div>
+  </div>
+</div>
+
+<script src="../js/core.js"></script>
+<script>
+  const { randomInt, showNotif, Leaderboard, Session } = MathArcade;
+  const session = Session.get();
+  document.getElementById('nav-user').innerHTML = session ?
+    `<span style="color:var(--neon-yellow);font-size:7px">${session.name}</span>` : '';
+
+  let gridSize = 3;
+  let solution = [];
+  let cages = [];
+  let userGrid = [];
+  let selectedCell = null;
+  let errors = 0;
+  let startTime = 0;
+  let timerInterval = null;
+
+  let selectedSizeEl = document.querySelector('[data-size="3"]');
+  window.selectSize = function(size, el) {
+    gridSize = size;
+    if (selectedSizeEl) { selectedSizeEl.style.cssText = 'color:var(--text-dim);border-color:var(--text-dim);'; selectedSizeEl.classList.remove('active'); }
+    el.className = 'btn btn-cyan diff-btn active';
+    el.style.cssText = '';
+    selectedSizeEl = el;
+  };
+
+  document.getElementById('btn-start').addEventListener('click', startGame);
+  document.getElementById('btn-check').addEventListener('click', checkPuzzle);
+  document.getElementById('btn-hint').addEventListener('click', giveHint);
+  document.getElementById('btn-new').addEventListener('click', () => { stopTimer(); document.getElementById('screen-game').classList.add('hidden'); document.getElementById('screen-settings').classList.remove('hidden'); document.getElementById('hud').style.display = 'none'; });
+  document.getElementById('btn-win-new').addEventListener('click', () => { document.getElementById('screen-win').classList.add('hidden'); document.getElementById('screen-settings').classList.remove('hidden'); document.getElementById('hud').style.display = 'none'; });
+
+  function startGame() {
+    if (MathArcade.Audio) MathArcade.Audio.playCoin();
+    errors = 0;
+    startTime = Date.now();
+    generatePuzzle();
+    document.getElementById('screen-settings').classList.add('hidden');
+    document.getElementById('screen-game').classList.remove('hidden');
+    document.getElementById('hud').style.display = 'flex';
+    document.getElementById('hud-size').textContent = `${gridSize}×${gridSize}`;
+    renderGrid();
+    renderNumpad();
+    startTimer();
+  }
+
+  // ---- PUZZLE GENERATION ----
+  function generatePuzzle() {
+    // Generate a valid Latin square
+    solution = latinSquare(gridSize);
+    userGrid = Array.from({ length: gridSize }, () => Array(gridSize).fill(0));
+    cages = generateCages();
+  }
+
+  function latinSquare(n) {
+    // Generate a random valid Latin square using shuffled base row
+    const base = shuffle([...Array(n)].map((_, i) => i + 1));
+    const grid = [];
+    for (let r = 0; r < n; r++) {
+      grid.push(base.map((v, c) => ((v - 1 + r) % n) + 1));
+    }
+    // Shuffle rows and columns
+    shuffleArr(grid);
+    const cols = shuffle([...Array(n)].map((_,i) => i));
+    return grid.map(row => cols.map(c => row[c]));
+  }
+
+  function shuffle(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = randomInt(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } return arr; }
+  function shuffleArr(arr) { for (let i = arr.length - 1; i > 0; i--) { const j = randomInt(0, i); [arr[i], arr[j]] = [arr[j], arr[i]]; } }
+
+  function generateCages() {
+    const n = gridSize;
+    const assigned = Array.from({ length: n }, () => Array(n).fill(false));
+    const cageList = [];
+    const opNames = ['+', '-', '×', '÷'];
+
+    // Walk cells in order and group into cages
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        if (assigned[r][c]) continue;
+        const cells = [[r, c]];
+        assigned[r][c] = true;
+        // Try to extend cage by 1 (horizontal or vertical)
+        const maxSize = n <= 3 ? 2 : randomInt(1, Math.min(4, n));
+        const dirs = shuffle([[0,1],[1,0],[0,-1],[-1,0]]);
+        let attempts = 0;
+        while (cells.length < maxSize && attempts < 8) {
+          attempts++;
+          const base = cells[randomInt(0, cells.length - 1)];
+          for (const [dr, dc] of dirs) {
+            const nr = base[0] + dr, nc = base[1] + dc;
+            if (nr >= 0 && nr < n && nc >= 0 && nc < n && !assigned[nr][nc]) {
+              cells.push([nr, nc]);
+              assigned[nr][nc] = true;
+              break;
+            }
+          }
+        }
+
+        const vals = cells.map(([r,c]) => solution[r][c]);
+        let op, target;
+        if (cells.length === 1) {
+          op = ''; target = vals[0];
+        } else if (cells.length === 2) {
+          // Choose op based on values
+          const [a, b] = vals.sort((x,y) => y - x);
+          const possible = ['+'];
+          possible.push('-');
+          if (b !== 0 && a % b === 0) possible.push('÷');
+          possible.push('×');
+          op = possible[randomInt(0, possible.length - 1)];
+          if (op === '+') target = a + b;
+          else if (op === '-') target = a - b;
+          else if (op === '×') target = a * b;
+          else target = a / b;
+        } else {
+          op = randomInt(0,1) ? '+' : '×';
+          target = vals.reduce((acc, v) => op === '+' ? acc + v : acc * v, op === '+' ? 0 : 1);
+        }
+        cageList.push({ cells, op, target });
+      }
+    }
+    return cageList;
+  }
+
+  // ---- RENDER ----
+  function renderGrid() {
+    const n = gridSize;
+    const grid = document.getElementById('kenken-grid');
+    const cellSz = Math.min(72, Math.floor(Math.min(window.innerWidth - 80, 500) / n));
+    grid.style.gridTemplateColumns = `repeat(${n}, ${cellSz}px)`;
+    grid.innerHTML = '';
+
+    // Create a lookup from cell to cage index
+    const cellCage = Array.from({ length: n }, () => Array(n).fill(-1));
+    cages.forEach((cage, ci) => cage.cells.forEach(([r,c]) => cellCage[r][c] = ci));
+
+    for (let r = 0; r < n; r++) {
+      for (let c = 0; c < n; c++) {
+        const ci = cellCage[r][c];
+        const cage = cages[ci];
+        const cell = document.createElement('div');
+        cell.className = 'kenken-cell';
+        cell.style.width = cellSz + 'px';
+        cell.style.height = cellSz + 'px';
+        cell.dataset.r = r; cell.dataset.c = c;
+
+        // Cage border logic
+        const isTopEdge    = r === 0 || cellCage[r-1][c] !== ci;
+        const isBottomEdge = r === n-1 || cellCage[r+1][c] !== ci;
+        const isLeftEdge   = c === 0 || cellCage[r][c-1] !== ci;
+        const isRightEdge  = c === n-1 || cellCage[r][c+1] !== ci;
+        if (isTopEdge)    cell.classList.add('cage-border-top');
+        if (isBottomEdge) cell.classList.add('cage-border-bottom');
+        if (isLeftEdge)   cell.classList.add('cage-border-left');
+        if (isRightEdge)  cell.classList.add('cage-border-right');
+
+        // Cage label (top-left cell of cage)
+        const isFirstOfCage = cage.cells[0][0] === r && cage.cells[0][1] === c;
+        if (isFirstOfCage && cage.op !== undefined) {
+          const label = document.createElement('div');
+          label.className = 'cage-label';
+          label.textContent = cage.target + cage.op;
+          label.style.fontSize = cellSz >= 60 ? '8px' : '7px';
+          cell.appendChild(label);
+        }
+
+        const valEl = document.createElement('div');
+        valEl.className = 'cell-value';
+        valEl.style.fontSize = (cellSz >= 60 ? 22 : 18) + 'px';
+        if (userGrid[r][c]) valEl.textContent = userGrid[r][c];
+        cell.appendChild(valEl);
+
+        cell.addEventListener('click', () => selectCell(r, c));
+        grid.appendChild(cell);
+      }
+    }
+    updateGridDisplay();
+  }
+
+  function renderNumpad() {
+    const pad = document.getElementById('numpad');
+    pad.style.gridTemplateColumns = `repeat(${Math.min(gridSize + 1, 7)},1fr)`;
+    pad.innerHTML = '';
+    for (let i = 1; i <= gridSize; i++) {
+      const btn = document.createElement('button');
+      btn.className = 'numpad-btn';
+      btn.textContent = i;
+      btn.addEventListener('click', () => inputNumber(i));
+      pad.appendChild(btn);
+    }
+    const clr = document.createElement('button');
+    clr.className = 'numpad-btn clear-btn';
+    clr.textContent = '✕';
+    clr.addEventListener('click', () => inputNumber(0));
+    pad.appendChild(clr);
+  }
+
+  function selectCell(r, c) {
+    selectedCell = [r, c];
+    document.querySelectorAll('.kenken-cell').forEach(el => el.classList.remove('selected', 'cage-highlight'));
+    const ci = cageOfCell(r, c);
+    // Highlight cage
+    cages[ci]?.cells.forEach(([cr,cc]) => {
+      const el = document.querySelector(`.kenken-cell[data-r="${cr}"][data-c="${cc}"]`);
+      if (el) el.classList.add('cage-highlight');
+    });
+    const el = document.querySelector(`.kenken-cell[data-r="${r}"][data-c="${c}"]`);
+    if (el) el.classList.add('selected');
+  }
+
+  function cageOfCell(r, c) {
+    return cages.findIndex(cg => cg.cells.some(([cr,cc]) => cr === r && cc === c));
+  }
+
+  function inputNumber(n) {
+    if (!selectedCell) { 
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      showNotif('SELECT A CELL!', 'cyan'); 
+      return; 
+    }
+    if (MathArcade.Audio) MathArcade.Audio.playBlip();
+    const [r, c] = selectedCell;
+    userGrid[r][c] = n;
+    updateGridDisplay();
+    updateFilled();
+  }
+
+  function updateGridDisplay() {
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        const el = document.querySelector(`.kenken-cell[data-r="${r}"][data-c="${c}"] .cell-value`);
+        if (el) el.textContent = userGrid[r][c] || '';
+      }
+    }
+  }
+
+  function updateFilled() {
+    const total = gridSize * gridSize;
+    const filled = userGrid.flat().filter(v => v > 0).length;
+    document.getElementById('hud-filled').textContent = Math.round(filled/total*100) + '%';
+  }
+
+  function checkPuzzle() {
+    let allCorrect = true;
+    for (let r = 0; r < gridSize; r++) {
+      for (let c = 0; c < gridSize; c++) {
+        const cell = document.querySelector(`.kenken-cell[data-r="${r}"][data-c="${c}"]`);
+        if (!cell || !userGrid[r][c]) { allCorrect = false; cell?.classList.remove('correct','wrong'); continue; }
+        const isRight = userGrid[r][c] === solution[r][c];
+        cell.classList.toggle('correct', isRight);
+        cell.classList.toggle('wrong', !isRight);
+        if (!isRight) { allCorrect = false; errors++; }
+      }
+    }
+    document.getElementById('hud-errors').textContent = errors;
+    const filled = userGrid.flat().filter(v => v > 0).length;
+    if (allCorrect && filled === gridSize * gridSize) {
+      if (MathArcade.Audio) MathArcade.Audio.playWin();
+      stopTimer();
+      const timeMs = Date.now() - startTime;
+      const score = Math.max(100, 10000 - errors * 500 - Math.floor(timeMs / 1000) * 10);
+      document.getElementById('win-time').textContent = (timeMs/1000).toFixed(1) + 's';
+      document.getElementById('win-errors').textContent = errors;
+      document.getElementById('win-score-disp').textContent = score + ' PTS';
+      Leaderboard.submit('kenken', score, { timeTaken: timeMs, gridSize, correct: 1, total: 1 });
+      document.getElementById('screen-game').classList.add('hidden');
+      document.getElementById('screen-win').classList.remove('hidden');
+      document.getElementById('hud').style.display = 'none';
+    } else {
+      if (MathArcade.Audio) MathArcade.Audio.playWrong();
+      showNotif(allCorrect ? 'FILL ALL CELLS FIRST!' : 'SOME ERRORS — KEEP TRYING!', allCorrect ? 'cyan' : 'pink');
+    }
+  }
+
+  function giveHint() {
+    // Fill a random empty cell with correct value
+    const empties = [];
+    for (let r = 0; r < gridSize; r++)
+      for (let c = 0; c < gridSize; c++)
+        if (!userGrid[r][c]) empties.push([r,c]);
+    if (!empties.length) { showNotif('GRID IS FULL!', 'cyan'); return; }
+    errors += 2; // Penalty for hint
+    document.getElementById('hud-errors').textContent = errors;
+    const [r,c] = empties[randomInt(0, empties.length - 1)];
+    userGrid[r][c] = solution[r][c];
+    updateGridDisplay();
+    updateFilled();
+    showNotif('💡 HINT USED (+2 ERRORS)', 'yellow');
+  }
+
+  function startTimer() {
+    stopTimer();
+    timerInterval = setInterval(() => {
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(0);
+      document.getElementById('hud-time').textContent = elapsed + 's';
+    }, 1000);
+  }
+  function stopTimer() { if (timerInterval) clearInterval(timerInterval); }
+
+  // Keyboard input
+  document.addEventListener('keydown', e => {
+    if (e.key >= '1' && e.key <= String(gridSize)) inputNumber(parseInt(e.key));
+    if (e.key === 'Backspace' || e.key === 'Delete' || e.key === '0') inputNumber(0);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Leaderboard — MathArcade</title>
+  <link rel="stylesheet" href="../css/style.css"/>
+  <style>
+    .games-tabs { display:flex; gap:8px; flex-wrap:wrap; padding:20px 30px; border-bottom:2px solid rgba(0,255,65,0.2); }
+    .game-tab { padding:10px 16px; font-size:8px; border:2px solid; cursor:pointer; font-family:'Press Start 2P',monospace; transition:all 0.2s; }
+    .game-tab.active { background:rgba(0,255,65,0.15); }
+    .stats-bar { display:flex; gap:20px; flex-wrap:wrap; padding:20px 30px; border-bottom:2px solid rgba(0,255,65,0.1); }
+    .stat-pill { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 20px; background:rgba(0,0,0,0.4); border:1px solid rgba(0,255,65,0.3); }
+    .stat-num { font-size:24px; font-family:'Varela Round',monospace; }
+    .stat-lbl { font-size:7px; color:var(--text-dim); letter-spacing:2px; }
+  </style>
+</head>
+<body>
+<div class="crt-corner tl"></div><div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div><div class="crt-corner br"></div>
+<nav class="navbar">
+  <div class="navbar-brand"><span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span></div>
+  <ul class="navbar-nav">
+    <li><a href="../index.html">HOME</a></li>
+    <li><a href="classroom.html">CLASSROOM</a></li>
+    <li><a href="leaderboard.html" style="color:var(--neon-yellow)">LEADERBOARD</a></li>
+    <li id="nav-exit"></li>
+  </ul>
+</nav>
+
+<div style="padding:30px 30px 10px;">
+  <h1 style="font-size:20px;" class="neon-yellow">🏆 HALL OF FAME</h1>
+  <p class="vt323" style="font-size:22px;color:var(--text-dim);margin-top:8px;">Global rankings across all games</p>
+</div>
+
+<div class="stats-bar" id="stats-bar"></div>
+
+<div class="games-tabs">
+  <div class="game-tab active" style="color:var(--neon-green);border-color:var(--neon-green);" onclick="switchGame('flash-anzan',this)" id="tab-fa">⚡ FLASH ANZAN</div>
+  <div class="game-tab" style="color:var(--neon-cyan);border-color:var(--neon-cyan);opacity:0.6;" onclick="switchGame('kenken',this)">🧩 KENKEN</div>
+  <div class="game-tab" style="color:var(--neon-pink);border-color:var(--neon-pink);opacity:0.6;" onclick="switchGame('memory-cascade',this)">🧠 MEMORY</div>
+  <div class="game-tab" style="color:var(--neon-yellow);border-color:var(--neon-yellow);opacity:0.6;" onclick="switchGame('hangman',this)">🪄 HANGMAN</div>
+  <div class="game-tab" style="color:var(--neon-purple);border-color:var(--neon-purple);opacity:0.6;" onclick="switchGame('hectoc',this)">💯 HECTOC</div>
+</div>
+
+<div style="padding:24px 30px;" id="lb-container"></div>
+
+<script src="../js/core.js"></script>
+<script>
+  const session = MathArcade.Session.get();
+  document.getElementById('nav-exit').innerHTML = session ?
+    `<span style="color:var(--neon-yellow);font-size:7px">${session.name}</span>
+     <button class="btn btn-sm btn-pink" onclick="MathArcade.Session.logout();window.location.href='../index.html'">EXIT</button>` : '';
+
+  // Stats bar
+  const all = MathArcade.Leaderboard.getAll();
+  const gameIds = ['flash-anzan','kenken','memory-cascade','hangman','hectoc'];
+  const totalScores = gameIds.reduce((s,g) => s + (all[g]?.length || 0), 0);
+  const uniquePlayers = new Set(gameIds.flatMap(g => (all[g] || []).map(e => e.userId))).size;
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat-pill"><div class="stat-num neon-green">${totalScores}</div><div class="stat-lbl">TOTAL GAMES PLAYED</div></div>
+    <div class="stat-pill"><div class="stat-num neon-cyan">${uniquePlayers}</div><div class="stat-lbl">UNIQUE PLAYERS</div></div>
+    <div class="stat-pill"><div class="stat-num neon-yellow">${gameIds.length}</div><div class="stat-lbl">GAMES AVAILABLE</div></div>`;
+
+  let currentGame = 'flash-anzan';
+  window.switchGame = function(gameId, el) {
+    currentGame = gameId;
+    document.querySelectorAll('.game-tab').forEach(t => t.style.opacity = '0.6');
+    el.style.opacity = '1';
+    loadLB();
+  };
+
+  function loadLB() {
+    const entries = MathArcade.Leaderboard.getForGame(currentGame);
+    MathArcade.Leaderboard.renderTable(entries, document.getElementById('lb-container'), ['rank','name','score','correct','time','date']);
+  }
+  loadLB();
+</script>
+</body>
+</html>

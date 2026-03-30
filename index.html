@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>MathArcade — Retro Math Games for Classrooms</title>
+  <meta name="description" content="Play Flash Anzan, KenKen, Memory Cascade, Number Hangman, and Hectoc in this retro math arcade. Create classrooms, track leaderboards, and compete!"/>
+  <link rel="stylesheet" href="css/style.css"/>
+  <style>
+    .hero-grid {
+      display: grid;
+      grid-template-columns: repeat(3,1fr);
+      gap: 6px;
+      margin: 30px auto;
+      max-width: 360px;
+    }
+    .hero-cell {
+      background: rgba(0,255,65,0.06);
+      border: 1px solid rgba(0,255,65,0.2);
+      padding: 8px;
+      text-align: center;
+      font-family: 'VT323', monospace;
+      font-size: 20px;
+      color: var(--neon-green);
+      animation: cell-pulse 3s ease-in-out infinite;
+    }
+    .hero-cell:nth-child(2n) { animation-delay: 0.5s; color: var(--neon-cyan); border-color: rgba(0,245,255,0.2); background: rgba(0,245,255,0.04); }
+    .hero-cell:nth-child(3n) { animation-delay: 1s; color: var(--neon-pink); border-color: rgba(255,0,110,0.2); background: rgba(255,0,110,0.04); }
+    @keyframes cell-pulse { 0%,100%{transform:scale(1);} 50%{transform:scale(1.06);} }
+
+    .marquee-wrap {
+      overflow: hidden;
+      border-top: 2px solid var(--neon-green);
+      border-bottom: 2px solid var(--neon-green);
+      padding: 10px 0;
+      background: rgba(0,255,65,0.04);
+    }
+    .marquee-text {
+      display: inline-block;
+      white-space: nowrap;
+      animation: marquee 30s linear infinite;
+      font-family: 'VT323', monospace;
+      font-size: 22px;
+      color: var(--neon-green);
+    }
+    @keyframes marquee { from{transform:translateX(100vw);} to{transform:translateX(-100%);} }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px,1fr));
+      gap: 20px;
+      padding: 20px 30px 40px;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .feat-card {
+      padding: 20px;
+      text-align: center;
+    }
+    .feat-icon { font-size: 36px; margin-bottom: 12px; display: block; }
+    .feat-title { font-size: 9px; margin-bottom: 8px; }
+    .feat-desc { font-family: 'VT323', monospace; font-size: 17px; color: var(--text-dim); }
+
+    .session-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      margin-bottom: 30px;
+      font-size: 9px;
+    }
+
+    .game-card:nth-child(1) { --card-color: var(--neon-green); }
+    .game-card:nth-child(2) { --card-color: var(--neon-cyan); }
+    .game-card:nth-child(3) { --card-color: var(--neon-pink); }
+    .game-card:nth-child(4) { --card-color: var(--neon-yellow); }
+    .game-card:nth-child(5) { --card-color: var(--neon-purple); }
+    .game-card:nth-child(6) { --card-color: var(--neon-orange); }
+  </style>
+</head>
+<body>
+
+<!-- CRT Corners -->
+<div class="crt-corner tl"></div>
+<div class="crt-corner tr"></div>
+<div class="crt-corner bl"></div>
+<div class="crt-corner br"></div>
+
+<!-- Navbar -->
+<nav class="navbar">
+  <div class="navbar-brand">
+    <span class="neon-green">MATH</span><span class="neon-cyan">ARCADE</span>
+    <span style="font-size:7px;color:var(--neon-pink);margin-left:8px;">v2.0</span>
+  </div>
+  <ul class="navbar-nav" id="main-nav">
+    <li><a href="index.html" style="color:var(--neon-green)">HOME</a></li>
+    <li><a href="pages/classroom.html">CLASSROOM</a></li>
+    <li><a href="pages/leaderboard.html">LEADERBOARD</a></li>
+    <li><a href="#arcade-section" style="color:var(--neon-pink)">ARCADE</a></li>
+    <li id="nav-session-btn"></li>
+  </ul>
+</nav>
+
+<!-- Marquee -->
+<div class="marquee-wrap">
+  <div class="marquee-text">★ FLASH ANZAN ★ KENKEN ★ MEMORY CASCADE ★ NUMBER HANGMAN ★ HECTOC ★ MATH AGAR ★ MATH SLITHER ★ ZOMBIE MATH ★ MATH MINER ★ KING OF MATH ★ 27 ARCADE GAMES ★ MULTIPLAYER LEADERBOARDS ★ CLASSROOM MANAGEMENT ★ RETRO MATH ARCADE ★&nbsp;&nbsp;&nbsp;&nbsp;</div>
+</div>
+
+<!-- HERO -->
+<section class="hero">
+  <div style="position:relative;z-index:1;">
+    <div style="font-size:9px;color:var(--neon-pink);letter-spacing:4px;margin-bottom:10px;">★ ARCADE EDITION ★</div>
+    <h1 class="hero-title neon-green">MATH ARCADE</h1>
+    <p class="hero-subtitle">TRAIN YOUR BRAIN. BEAT THE CLOCK.</p>
+
+    <div class="hero-grid">
+      <div class="hero-cell">7+3</div><div class="hero-cell">KEN<br>KEN</div><div class="hero-cell">×9</div>
+      <div class="hero-cell">100</div><div class="hero-cell">HMN</div><div class="hero-cell">?</div>
+      <div class="hero-cell">∑</div><div class="hero-cell">√</div><div class="hero-cell">π</div>
+    </div>
+
+    <div id="session-display"></div>
+    <div class="insert-coin">▶ SELECT YOUR GAME ◀</div>
+
+    <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap;">
+      <button class="btn btn-green btn-lg" id="btn-play">🎮 PLAY NOW</button>
+      <button class="btn btn-cyan btn-lg" id="btn-classroom">🏫 CLASSROOM</button>
+    </div>
+  </div>
+</section>
+
+<!-- GAMES GRID -->
+<div class="section-title">
+  <h2 class="neon-cyan">OUR GAMES</h2>
+  <p>Choose your challenge — 6 epic math games await</p>
+</div>
+
+<div class="games-grid">
+
+  <a href="games/flash-anzan.html" class="game-card pixel-box" style="border-color:var(--neon-green);box-shadow:0 0 20px rgba(0,255,65,0.2);">
+    <span class="game-card-icon">⚡</span>
+    <div class="game-card-num neon-green">GAME 01</div>
+    <div class="game-card-title neon-green">FLASH ANZAN</div>
+    <div class="game-card-desc">Numbers flash at lightning speed — add, subtract, multiply! Can you keep up with the mental math?</div>
+    <div class="game-card-badge" style="color:var(--neon-green);border-color:var(--neon-green);">SPEED</div>
+  </a>
+
+  <a href="games/kenken.html" class="game-card pixel-box cyan-box" style="border-color:var(--neon-cyan);box-shadow:0 0 20px rgba(0,245,255,0.2);">
+    <span class="game-card-icon">🧩</span>
+    <div class="game-card-num neon-cyan">GAME 02</div>
+    <div class="game-card-title neon-cyan">KENKEN</div>
+    <div class="game-card-desc">Fill the grid! Each cage must satisfy its arithmetic target. Logic + math = victory!</div>
+    <div class="game-card-badge" style="color:var(--neon-cyan);border-color:var(--neon-cyan);">LOGIC</div>
+  </a>
+
+  <a href="games/memory-cascade.html" class="game-card pixel-box pink-box" style="border-color:var(--neon-pink);box-shadow:0 0 20px rgba(255,0,110,0.2);">
+    <span class="game-card-icon">🧠</span>
+    <div class="game-card-num neon-pink">GAME 03</div>
+    <div class="game-card-title neon-pink">MEMORY CASCADE</div>
+    <div class="game-card-desc">Numbers float across the screen and vanish. Track 10 operations in your head and find the final answer!</div>
+    <div class="game-card-badge" style="color:var(--neon-pink);border-color:var(--neon-pink);">MEMORY</div>
+  </a>
+
+  <a href="games/hangman.html" class="game-card pixel-box yellow-box" style="border-color:var(--neon-yellow);box-shadow:0 0 20px rgba(255,230,0,0.2);">
+    <span class="game-card-icon">🪄</span>
+    <div class="game-card-num neon-yellow">GAME 04</div>
+    <div class="game-card-title neon-yellow">NUMBER HANGMAN</div>
+    <div class="game-card-desc">5 questions. Answer wrong → hangman appears. All 5 wrong = ☠️ Game Over. Race against the clock!</div>
+    <div class="game-card-badge" style="color:var(--neon-yellow);border-color:var(--neon-yellow);">SURVIVAL</div>
+  </a>
+
+  <a href="games/hectoc.html" class="game-card pixel-box purple-box" style="border-color:var(--neon-purple);box-shadow:0 0 20px rgba(191,0,255,0.2);">
+    <span class="game-card-icon">💯</span>
+    <div class="game-card-num neon-purple">GAME 05</div>
+    <div class="game-card-title neon-purple">HECTOC</div>
+    <div class="game-card-desc">Use 6 digits in order with any operations to make 100. Compete live in multiplayer — fastest wins!</div>
+    <div class="game-card-badge" style="color:var(--neon-purple);border-color:var(--neon-purple);">MULTI</div>
+  </a>
+
+  <a href="games/math-cell-wars.html" class="game-card pixel-box orange-box" style="border-color:var(--neon-orange);box-shadow:0 0 20px rgba(255,140,0,0.2);">
+    <span class="game-card-icon">🦠</span>
+    <div class="game-card-num neon-orange">GAME 06</div>
+    <div class="game-card-title neon-orange">MATH CELL WARS</div>
+    <div class="game-card-desc">Waves of monsters march on your castle! Answer math questions to blast them before they reach the walls. Choose your grade &amp; skill!</div>
+    <div class="game-card-badge" style="color:var(--neon-orange);border-color:var(--neon-orange);">ARCADE</div>
+  </a>
+
+</div>
+
+<hr class="pixel-divider" style="margin:10px 30px;"/>
+
+<!-- FEATURES -->
+<div class="section-title">
+  <h2 class="neon-yellow">FEATURES</h2>
+  <p>Built for teachers. Loved by students.</p>
+</div>
+<div class="features-grid">
+  <div class="feat-card pixel-box">
+    <span class="feat-icon">🏫</span>
+    <div class="feat-title neon-green">CLASSROOM MANAGEMENT</div>
+    <div class="feat-desc">Create a class, share a code or link, students join instantly. Full leaderboard per class.</div>
+  </div>
+  <div class="feat-card pixel-box cyan-box">
+    <span class="feat-icon">🏆</span>
+    <div class="feat-title neon-cyan">LIVE LEADERBOARDS</div>
+    <div class="feat-desc">Track scores, time taken, and accuracy per student per game. Teacher dashboard included.</div>
+  </div>
+  <div class="feat-card pixel-box pink-box">
+    <span class="feat-icon">⚡</span>
+    <div class="feat-title neon-pink">INSTANT PLAY</div>
+    <div class="feat-desc">No downloads, no installs. Pure browser-based retro gaming.</div>
+  </div>
+  <div class="feat-card pixel-box yellow-box">
+    <span class="feat-icon">🎮</span>
+    <div class="feat-title neon-yellow">MULTIPLAYER</div>
+    <div class="feat-desc">Hectoc features live multiplayer with real-time competitive leaderboards.</div>
+  </div>
+</div>
+
+<!-- LOGIN/JOIN MODAL -->
+<div class="modal-overlay" id="modal-login">
+  <div class="modal pixel-box" style="position:relative;max-width:520px;">
+    <button class="modal-close" id="modal-close-btn">✕</button>
+    <div class="modal-title neon-green" style="margin-bottom:6px;">WHO ARE YOU?</div>
+    <div class="vt323 text-center" style="font-size:18px;color:var(--text-dim);margin-bottom:20px;">Select your role to get started</div>
+
+    <!-- Role selector cards -->
+    <div id="role-select" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:20px;">
+      <button id="role-student-btn" onclick="setRole('student')"
+        class="pixel-box" style="padding:20px;cursor:pointer;text-align:center;border-color:rgba(0,255,65,0.4);transition:all 0.2s;">
+        <div style="font-size:36px;margin-bottom:8px;">🎮</div>
+        <div style="font-size:9px;color:var(--neon-green);letter-spacing:2px;">I AM A</div>
+        <div style="font-size:14px;color:var(--neon-green);">STUDENT</div>
+      </button>
+      <button id="role-teacher-btn" onclick="setRole('teacher')"
+        class="pixel-box" style="padding:20px;cursor:pointer;text-align:center;border-color:rgba(0,245,255,0.4);transition:all 0.2s;">
+        <div style="font-size:36px;margin-bottom:8px;">👩‍🏫</div>
+        <div style="font-size:9px;color:var(--neon-cyan);letter-spacing:2px;">I AM A</div>
+        <div style="font-size:14px;color:var(--neon-cyan);">TEACHER</div>
+      </button>
+      <button id="role-individual-btn" onclick="setRole('individual')"
+        class="pixel-box" style="padding:20px;cursor:pointer;text-align:center;border-color:rgba(255,0,110,0.4);transition:all 0.2s;">
+        <div style="font-size:36px;margin-bottom:8px;">👤</div>
+        <div style="font-size:9px;color:var(--neon-pink);letter-spacing:2px;">I AM AN</div>
+        <div style="font-size:14px;color:var(--neon-pink);">INDIVIDUAL</div>
+      </button>
+    </div>
+
+    <!-- Student panel -->
+    <div id="panel-student" class="hidden">
+      <div style="font-size:8px;color:var(--neon-green);letter-spacing:3px;margin-bottom:14px;">🎮 STUDENT SETUP</div>
+      <div class="form-group">
+        <label>YOUR NAME</label>
+        <input class="pixel-input" type="text" id="student-name" placeholder="ENTER YOUR NAME" maxlength="20"/>
+      </div>
+      <div class="form-group">
+        <label>CLASS CODE <span style="color:var(--text-dim);font-size:7px;">(OPTIONAL — ASK YOUR TEACHER)</span></label>
+        <input class="pixel-input" type="text" id="student-code" placeholder="6-CHAR CODE" maxlength="6"
+          style="text-transform:uppercase;letter-spacing:4px;"/>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-green w-full" id="btn-student-join">▶ START PLAYING</button>
+        <button class="btn" onclick="setRole(null)" style="color:var(--text-dim);border-color:var(--text-dim);">← BACK</button>
+      </div>
+    </div>
+
+    <!-- Teacher panel -->
+    <div id="panel-teacher" class="hidden">
+      <div style="font-size:8px;color:var(--neon-cyan);letter-spacing:3px;margin-bottom:14px;">👩‍🏫 TEACHER SETUP</div>
+      <div class="form-group">
+        <label>YOUR NAME</label>
+        <input class="pixel-input" type="text" id="teacher-name" placeholder="YOUR NAME" maxlength="20"
+          style="border-color:var(--neon-cyan);color:var(--neon-cyan);"/>
+      </div>
+      <div class="form-group">
+        <label>CLASSROOM NAME</label>
+        <input class="pixel-input" type="text" id="class-name" placeholder="E.G. MATH CLASS 6A" maxlength="30"
+          style="border-color:var(--neon-cyan);color:var(--neon-cyan);"/>
+      </div>
+      <div style="padding:12px;background:rgba(0,245,255,0.04);border:1px solid rgba(0,245,255,0.2);margin-bottom:12px;" class="vt323">
+        <span style="color:var(--neon-cyan);font-size:18px;">✓ A unique class code will be generated<br/>✓ Share it with students to join<br/>✓ View a live leaderboard per game</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:4px;">
+        <button class="btn btn-cyan w-full" id="btn-teacher-create">🏫 CREATE CLASSROOM</button>
+        <button class="btn" onclick="setRole(null)" style="color:var(--text-dim);border-color:var(--text-dim);">← BACK</button>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn w-full" onclick="teacherLoginOnly()" style="font-size:7px;color:var(--text-dim);border-color:rgba(255,255,255,0.1);">OR JUST BROWSE WITHOUT CREATING A CLASS →</button>
+      </div>
+    </div>
+
+    <!-- Individual panel -->
+    <div id="panel-individual" class="hidden">
+      <div style="font-size:8px;color:var(--neon-pink);letter-spacing:3px;margin-bottom:14px;">👤 INDIVIDUAL SETUP</div>
+      <div class="form-group">
+        <label>YOUR NAME</label>
+        <input class="pixel-input" type="text" id="individual-name" placeholder="ENTER YOUR NAME" maxlength="20"
+          style="border-color:var(--neon-pink);color:var(--neon-pink);"/>
+      </div>
+      <div style="padding:12px;background:rgba(255,0,110,0.04);border:1px solid rgba(255,0,110,0.2);margin-bottom:12px;" class="vt323">
+        <span style="color:var(--neon-pink);font-size:18px;">✓ Just play the games<br/>✓ Save your local high scores<br/>✓ No classroom required</span>
+      </div>
+      <div style="display:flex;gap:10px;margin-top:12px;">
+        <button class="btn btn-pink w-full" id="btn-individual-join">▶ START PLAYING</button>
+        <button class="btn" onclick="setRole(null)" style="color:var(--text-dim);border-color:var(--text-dim);">← BACK</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="js/core.js"></script>
+<script>
+  MathArcade.spawnFloatingNumbers();
+  // CRT corners already from CSS
+  const session = MathArcade.Session.get();
+  const navBtn = document.getElementById('nav-session-btn');
+  const sessionDisplay = document.getElementById('session-display');
+
+  if (session) {
+    const roleIcons = { teacher: '👩‍🏫', student: '🎮', individual: '👤' };
+    const roleIcon = roleIcons[session.role] || '🎮';
+    navBtn.innerHTML = `<span style="color:var(--neon-yellow);font-size:7px">${roleIcon} ${session.name}</span>
+      <button class="btn btn-sm btn-pink" onclick="MathArcade.Session.logout();location.reload();">EXIT</button>`;
+    sessionDisplay.innerHTML = `<div class="session-badge pixel-box" style="margin:0 auto 20px;display:inline-flex;">
+      <span class="neon-yellow">${roleIcon}</span>
+      <span class="neon-green">${session.name}</span>
+      <span style="color:var(--text-dim);font-size:7px">${session.role.toUpperCase()}</span>
+    </div>`;
+  } else {
+    navBtn.innerHTML = `<button class="btn btn-sm btn-green" onclick="document.getElementById('modal-login').classList.add('active')">LOGIN</button>`;
+  }
+
+  // Role selection
+  window.setRole = (role) => {
+    document.getElementById('role-select').classList.toggle('hidden', role !== null);
+    document.getElementById('panel-student').classList.toggle('hidden', role !== 'student');
+    document.getElementById('panel-teacher').classList.toggle('hidden', role !== 'teacher');
+    document.getElementById('panel-individual').classList.toggle('hidden', role !== 'individual');
+    if (role === 'student') document.getElementById('student-name').focus();
+    if (role === 'teacher') document.getElementById('teacher-name').focus();
+    if (role === 'individual') document.getElementById('individual-name').focus();
+
+    // Highlight selected card
+    const sb = document.getElementById('role-student-btn');
+    const tb = document.getElementById('role-teacher-btn');
+    const ib = document.getElementById('role-individual-btn');
+    if (sb) sb.style.borderColor = role === 'student' ? 'var(--neon-green)' : 'rgba(0,255,65,0.4)';
+    if (tb) tb.style.borderColor = role === 'teacher' ? 'var(--neon-cyan)'  : 'rgba(0,245,255,0.4)';
+    if (ib) ib.style.borderColor = role === 'individual' ? 'var(--neon-pink)' : 'rgba(255,0,110,0.4)';
+  };
+
+  window.teacherLoginOnly = () => {
+    const name = document.getElementById('teacher-name').value.trim().toUpperCase();
+    if (!name) return MathArcade.showNotif('ENTER YOUR NAME!', 'pink');
+    MathArcade.Session.login(name, 'teacher');
+    MathArcade.showNotif(`WELCOME, ${name}!`, 'cyan');
+    setTimeout(() => location.reload(), 800);
+  };
+
+  // Student join
+  document.getElementById('btn-student-join').addEventListener('click', () => {
+    const name = document.getElementById('student-name').value.trim().toUpperCase();
+    const code = document.getElementById('student-code').value.trim().toUpperCase();
+    if (!name) return MathArcade.showNotif('ENTER YOUR NAME!', 'pink');
+    if (code) {
+      const room = MathArcade.Classroom.join(code, name);
+      if (!room) return MathArcade.showNotif('INVALID CLASS CODE!', 'pink');
+      MathArcade.showNotif(`JOINED: ${room.name}!`, 'cyan');
+    } else {
+      MathArcade.Session.login(name, 'student');
+      MathArcade.showNotif(`WELCOME, ${name}!`, 'green');
+    }
+    setTimeout(() => location.reload(), 800);
+  });
+
+  // Teacher create
+  document.getElementById('btn-teacher-create').addEventListener('click', () => {
+    const name = document.getElementById('teacher-name').value.trim().toUpperCase();
+    const cls = document.getElementById('class-name').value.trim().toUpperCase();
+    if (!name || !cls) return MathArcade.showNotif('FILL ALL FIELDS!', 'pink');
+    const { id, code } = MathArcade.Classroom.create(cls, name);
+    MathArcade.showNotif(`CLASS CREATED! CODE: ${code}`, 'yellow');
+    setTimeout(() => window.location.href = `pages/classroom.html?id=${id}`, 1000);
+  });
+
+  // Individual join
+  document.getElementById('btn-individual-join').addEventListener('click', () => {
+    const name = document.getElementById('individual-name').value.trim().toUpperCase();
+    if (!name) return MathArcade.showNotif('ENTER YOUR NAME!', 'pink');
+    MathArcade.Session.login(name, 'individual');
+    MathArcade.showNotif(`WELCOME, ${name}!`, 'pink');
+    setTimeout(() => location.reload(), 800);
+  });
+
+  // Modal close
+  document.getElementById('modal-close-btn').addEventListener('click', () => document.getElementById('modal-login').classList.remove('active'));
+  document.getElementById('modal-login').addEventListener('click', e => { if (e.target === document.getElementById('modal-login')) document.getElementById('modal-login').classList.remove('active'); });
+
+  // Auto-open modal for first-time visitors (no session)
+  if (!MathArcade.Session.isLoggedIn()) {
+    setTimeout(() => document.getElementById('modal-login').classList.add('active'), 600);
+  }
+  document.getElementById('btn-play').addEventListener('click', () => {
+    if (!MathArcade.Session.isLoggedIn()) { document.getElementById('modal-login').classList.add('active'); return; }
+    document.querySelector('.games-grid').scrollIntoView({ behavior: 'smooth' });
+  });
+  document.getElementById('btn-classroom').addEventListener('click', () => window.location.href = 'pages/classroom.html');
+</script>
+</body>
+</html>
